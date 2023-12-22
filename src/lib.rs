@@ -1,0 +1,231 @@
+//! # RampDelay PAM Module
+//!
+//! The RampDelay PAM (Pluggable Authentication Modules) module provides an account lockout mechanism
+//! based on the number of authentication failures. It calculates a dynamic delay for subsequent
+//! authentication attempts, increasing the delay with each failure to mitigate brute force attacks.
+//!
+//! ## Usage
+//!
+//! To use the RampDelay PAM module, integrate it with the PAM system by configuring the `/etc/pam.d/`
+//! configuration files for the desired PAM-aware services. This module is designed for the
+//! `sm_authenticate` and `acct_mgmt` hooks.
+//!
+//! ## Configuration
+//!
+//! The behavior of the RampDelay module is configurable through an INI file located at
+//! `/etc/security/rampdelay.conf` by default. The configuration file can be customized with settings
+//! such as the tally directory, free tries threshold, base delay, and multiplier.
+//!
+//! ```ini
+//! [Settings]
+//! tally_dir = /var/run/rampdelay
+//! free_tries = 6
+//! base_delay_seconds = 30
+//! ramp_multiplier = 1.5
+//! ```
+//!
+//! - `tally_dir`: Directory where tally information is stored.
+//! - `free_tries`: Number of allowed free authentication attempts before applying delays.
+//! - `base_delay_seconds`: Base delay applied to each authentication failure.
+//! - `ramp_multiplier`: Multiplier for the delay calculation based on the number of failures.
+//!
+//! ## License
+//!
+//! pam-authramp
+//! Copyright (C) 2023 github.com/34N0
+//!
+//! This program is free software: you can redistribute it and/or modify
+//! it under the terms of the GNU General Public License as published by
+//! the Free Software Foundation, either version 3 of the License, or
+//! (at your option) any later version.
+//!
+//! This program is distributed in the hope that it will be useful,
+//! but WITHOUT ANY WARRANTY; without even the implied warranty of
+//! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//! GNU General Public License for more details.
+//!
+//! You should have received a copy of the GNU General Public License
+//! along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+mod settings;
+mod tally;
+
+extern crate chrono;
+extern crate ini;
+extern crate once_cell;
+extern crate pam;
+extern crate tempdir;
+extern crate users;
+
+use chrono::{Duration, Utc};
+use pam::constants::{PamFlag, PamResultCode, PAM_ERROR_MSG};
+use pam::conv::Conv;
+use pam::module::{PamHandle, PamHooks};
+use pam::pam_try;
+use settings::Settings;
+use std::ffi::CStr;
+
+use std::thread::sleep;
+use tally::Tally;
+use users::get_user_by_name;
+
+// Action argument defines position in PAM stack
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub enum Actions {
+    PREAUTH,
+    AUTHSUCC,
+    #[default]
+    AUTHFAIL,
+}
+
+/// Initializes the RampDelay module by setting up user information and loading settings.
+/// Calls the provided pam_hook function with the initialized variables.
+///
+/// # Arguments
+/// - `pamh`: PamHandle instance for interacting with PAM
+/// - `_args`: PAM arguments provided during authentication
+/// - `_flags`: PAM flags indicating the context of the PAM operation
+/// - `pam_hook`: Function to be called with the initialized variables
+///
+/// # Returns
+/// Result from the pam_hook function or PAM error code if initialization fails
+fn init_rampdelay<F, R>(
+    pamh: &mut PamHandle,
+    _args: Vec<&CStr>,
+    _flags: PamFlag,
+    pam_hook: F,
+) -> Result<R, PamResultCode>
+where
+    F: FnOnce(&mut PamHandle, &Settings, &Tally) -> Result<R, PamResultCode>,
+{
+    // Try to get PAM user
+    let user = get_user_by_name(pam_try!(
+        &pamh.get_user(None),
+        Err(PamResultCode::PAM_AUTH_ERR)
+    ));
+
+    // Read configuration file
+    let settings = Settings::build(user.clone(), _args, _flags, None)?;
+
+    // Get and Set tally
+    let tally = Tally::open(&settings)?;
+
+    pam_hook(pamh, &settings, &tally)
+}
+
+/// Calculates the delay based on the number of authentication failures and settings.
+/// Uses the RampDelay formula: delay = multiplier * (log(fails - free_tries) + base_delay)
+///
+/// # Arguments
+/// - `fails`: Number of authentication failures
+/// - `settings`: Settings for the RampDelay module
+///
+/// # Returns
+/// Calculated delay as a floating-point number
+fn calc_delay(fails: i32, settings: &Settings) -> f64 {
+    settings.ramp_multiplier as f64
+        * (fails as f64 - settings.free_tries as f64)
+        * ((fails as f64 - settings.free_tries as f64).ln())
+        + settings.base_delay_seconds as f64
+}
+
+/// Formats a Duration into a human-readable string representation.
+/// The format includes hours, minutes, and seconds, excluding zero values.
+///
+/// # Arguments
+/// - `remaining_time`: Duration representing the remaining time
+///
+/// # Returns
+/// Formatted string indicating the remaining time
+fn format_remaining_time(remaining_time: Duration) -> String {
+    let mut formatted_time = String::new();
+
+    if remaining_time.num_hours() > 0 {
+        formatted_time.push_str(&format!("{} hours ", remaining_time.num_hours()));
+    }
+
+    if remaining_time.num_minutes() > 0 {
+        formatted_time.push_str(&format!("{} minutes ", remaining_time.num_minutes() % 60));
+    }
+
+    formatted_time.push_str(&format!("{} seconds", remaining_time.num_seconds() % 60));
+
+    formatted_time
+}
+
+/// Handles the account lockout mechanism based on the number of failures and settings.
+/// If the account is locked, it sends periodic messages to the user until the account is unlocked.
+///
+/// # Arguments
+/// - `pamh`: PamHandle instance for interacting with PAM
+/// - `settings`: Settings for the RampDelay module
+/// - `tally`: Tally information containing failure count and timestamps
+///
+/// # Returns
+/// PAM_SUCCESS if the account is successfully unlocked, PAM_AUTH_ERR otherwise
+fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamResultCode {
+    if tally.failures_count > settings.free_tries {
+        if let Ok(Some(conv)) = pamh.get_item::<Conv>() {
+            let delay = calc_delay(tally.failures_count, settings);
+
+            // Calculate the time when the account will be unlocked
+            let unlock_time = tally.failure_instant + Duration::seconds(delay as i64);
+
+            while Utc::now() < unlock_time {
+                // Calculate remaining time until unlock
+                let remaining_time = unlock_time - Utc::now();
+
+                // Send a message to the conversation function
+                let _ = conv.send(
+                    PAM_ERROR_MSG,
+                    &format!(
+                        "Account locked! Unlocking in {}.",
+                        format_remaining_time(remaining_time)
+                    ),
+                );
+
+                // Wait for one second
+                sleep(std::time::Duration::from_secs(1));
+            }
+
+            // Account is now unlocked, continue with PAM_SUCCESS
+            return PamResultCode::PAM_SUCCESS;
+        }
+    }
+
+    // Account is not locked or an error occurred, return PAM_AUTH_ERR
+    PamResultCode::PAM_AUTH_ERR
+}
+pub struct PamRampDelay;
+
+pam::pam_hooks!(PamRampDelay);
+impl PamHooks for PamRampDelay {
+    fn sm_authenticate(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+        init_rampdelay(pamh, args, flags, |pamh, settings, tally| {
+            // match action parameter
+            match settings.action {
+                Some(Actions::PREAUTH) => {
+                    // if account is locked then bounce
+                    if tally.failures_count > settings.free_tries {
+                        Err(bounce_auth(pamh, settings, tally))
+                    } else {
+                        Ok(PamResultCode::PAM_SUCCESS)
+                    }
+                }
+                // bounce if called with authfail
+                Some(Actions::AUTHFAIL) => Err(bounce_auth(pamh, settings, tally)),
+                None | Some(Actions::AUTHSUCC) => Err(PamResultCode::PAM_AUTH_ERR),
+            }
+        })
+        .unwrap_or(PamResultCode::PAM_SUCCESS)
+    }
+
+    fn acct_mgmt(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+        pam_try!(init_rampdelay(
+            pamh,
+            args,
+            flags,
+            |_pamh, _settings, _tally| { Ok(PamResultCode::PAM_SUCCESS) }
+        ))
+    }
+}
