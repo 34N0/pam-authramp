@@ -1,12 +1,12 @@
 //! # Settings Module
 //!
 //! The `settings` module is responsible for managing configuration settings related to the
-//! rampdelay PAM module. It provides a structure `Settings` and functions to load configuration
+//! authramp PAM module. It provides a structure `Settings` and functions to load configuration
 //! from an INI file, build settings based on user input, and set default values.
 //!
 //! ## Overview
 //!
-//! The `Settings` structure represents the configuration settings for the rampdelay PAM module.
+//! The `Settings` structure represents the configuration settings for the authramp PAM module.
 //! It includes fields such as `action`, `user`, `tally_dir`, `free_tries`, `base_delay_seconds`,
 //! and `ramp_multiplier`.
 //!
@@ -36,8 +36,8 @@ use std::ffi::CStr;
 use std::path::PathBuf;
 use users::User;
 
-const DEFAULT_TALLY_DIR: &str = "/var/run/rampdelay";
-const DEFAULT_CONFIG_FILE_PATH: &str = "/etc/security/rampdelay.conf";
+const DEFAULT_TALLY_DIR: &str = "/var/run/authramp";
+const DEFAULT_CONFIG_FILE_PATH: &str = "/etc/security/authramp.conf";
 
 // Settings struct represents the configuration loaded from default values, configuration file and parameters
 #[derive(Debug)]

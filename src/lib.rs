@@ -1,24 +1,24 @@
-//! # RampDelay PAM Module
+//! # AuthRamp PAM Module
 //!
-//! The RampDelay PAM (Pluggable Authentication Modules) module provides an account lockout mechanism
+//! The AuthRamp PAM (Pluggable Authentication Modules) module provides an account lockout mechanism
 //! based on the number of authentication failures. It calculates a dynamic delay for subsequent
 //! authentication attempts, increasing the delay with each failure to mitigate brute force attacks.
 //!
 //! ## Usage
 //!
-//! To use the RampDelay PAM module, integrate it with the PAM system by configuring the `/etc/pam.d/`
+//! To use the AuthRamp PAM module, integrate it with the PAM system by configuring the `/etc/pam.d/`
 //! configuration files for the desired PAM-aware services. This module is designed for the
 //! `sm_authenticate` and `acct_mgmt` hooks.
 //!
 //! ## Configuration
 //!
-//! The behavior of the RampDelay module is configurable through an INI file located at
-//! `/etc/security/rampdelay.conf` by default. The configuration file can be customized with settings
+//! The behavior of the AuthRamp module is configurable through an INI file located at
+//! `/etc/security/authramp.conf` by default. The configuration file can be customized with settings
 //! such as the tally directory, free tries threshold, base delay, and multiplier.
 //!
 //! ```ini
 //! [Settings]
-//! tally_dir = /var/run/rampdelay
+//! tally_dir = /var/run/authramp
 //! free_tries = 6
 //! base_delay_seconds = 30
 //! ramp_multiplier = 1.5
@@ -78,7 +78,7 @@ pub enum Actions {
     AUTHFAIL,
 }
 
-/// Initializes the RampDelay module by setting up user information and loading settings.
+/// Initializes the authramp module by setting up user information and loading settings.
 /// Calls the provided pam_hook function with the initialized variables.
 ///
 /// # Arguments
@@ -89,7 +89,7 @@ pub enum Actions {
 ///
 /// # Returns
 /// Result from the pam_hook function or PAM error code if initialization fails
-fn init_rampdelay<F, R>(
+fn init_authramp<F, R>(
     pamh: &mut PamHandle,
     _args: Vec<&CStr>,
     _flags: PamFlag,
@@ -114,11 +114,11 @@ where
 }
 
 /// Calculates the delay based on the number of authentication failures and settings.
-/// Uses the RampDelay formula: delay = multiplier * (log(fails - free_tries) + base_delay)
+/// Uses the authramp formula: delay=ramp_multiplier×(fails − free_tries)×ln(fails − free_tries)+base_delay_seconds
 ///
 /// # Arguments
 /// - `fails`: Number of authentication failures
-/// - `settings`: Settings for the RampDelay module
+/// - `settings`: Settings for the authramp module
 ///
 /// # Returns
 /// Calculated delay as a floating-point number
@@ -158,7 +158,7 @@ fn format_remaining_time(remaining_time: Duration) -> String {
 ///
 /// # Arguments
 /// - `pamh`: PamHandle instance for interacting with PAM
-/// - `settings`: Settings for the RampDelay module
+/// - `settings`: Settings for the authramp module
 /// - `tally`: Tally information containing failure count and timestamps
 ///
 /// # Returns
@@ -196,12 +196,12 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
     // Account is not locked or an error occurred, return PAM_AUTH_ERR
     PamResultCode::PAM_AUTH_ERR
 }
-pub struct PamRampDelay;
+pub struct Pamauthramp;
 
-pam::pam_hooks!(PamRampDelay);
-impl PamHooks for PamRampDelay {
+pam::pam_hooks!(Pamauthramp);
+impl PamHooks for Pamauthramp {
     fn sm_authenticate(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        init_rampdelay(pamh, args, flags, |pamh, settings, tally| {
+        init_authramp(pamh, args, flags, |pamh, settings, tally| {
             // match action parameter
             match settings.action {
                 Some(Actions::PREAUTH) => {
@@ -221,7 +221,7 @@ impl PamHooks for PamRampDelay {
     }
 
     fn acct_mgmt(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        pam_try!(init_rampdelay(
+        pam_try!(init_authramp(
             pamh,
             args,
             flags,
