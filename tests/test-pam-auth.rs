@@ -1,6 +1,6 @@
 //! # PAM Auth Integration Test module
 //!
-//! The `test-pam-auth` module contains integration tests for the rampdelay PAM module. These tests
+//! The `test-pam-auth` module contains integration tests for the authramp PAM module. These tests
 //! simulate authentication scenarios and validate the behavior of the module, including tally file
 //! creation, tally count updates, and successful authentication clearing the tally.
 //!

@@ -1,6 +1,6 @@
 //! # Test Utilities Module
 //!
-//! The `test_utils` module provides utility functions for testing the rampdelay PAM module. It
+//! The `test_utils` module provides utility functions for testing the authramp PAM module. It
 //! includes functions to create and remove PAM service files, clear the tally directory, and
 //! initialize and clear the testing environment. Additionally, it offers functions to obtain a
 //! PAM context and the path to a user's tally file.
@@ -8,7 +8,7 @@
 //! ## PAM Service File
 //!
 //! The PAM service file is a configuration file used to define PAM services. The module includes
-//! functions to create and remove a PAM service file specific to the rampdelay module during tests.
+//! functions to create and remove a PAM service file specific to the authramp module during tests.
 //!
 //! ## Tally Directory
 //!
@@ -24,7 +24,7 @@
 //! ## PAM Context
 //!
 //! The `get_pam_context` function creates a PAM context for testing purposes. It takes a username
-//! and password, initializes a PAM context with the rampdelay PAM service, and sets up a
+//! and password, initializes a PAM context with the authramp PAM service, and sets up a
 //! conversation with the provided credentials.
 //!
 //! ## Tally File Path
@@ -63,7 +63,7 @@ use pam_client::conv_mock::Conversation;
 use pam_client::Context;
 
 pub const SRV_DIR: &str = "/etc/pam.d";
-pub const PAM_SRV: &str = "test-rampdelay";
+pub const PAM_SRV: &str = "test-authramp";
 
 fn create_pam_service_file() -> io::Result<()> {
     let mut file = File::create(PathBuf::from(SRV_DIR).join(PAM_SRV))?;
@@ -83,7 +83,7 @@ fn remove_pam_service_file() -> io::Result<()> {
 }
 
 fn clear_tally_dir() -> Result<(), io::Error> {
-    remove_dir_all("/var/run/rampdelay")?;
+    remove_dir_all("/var/run/authramp")?;
     Ok(())
 }
 
@@ -103,5 +103,5 @@ pub fn get_pam_context(u_name: &str, u_pwd: &str) -> Context<Conversation> {
 }
 
 pub fn get_tally_file_path(u_name: &str) -> PathBuf {
-    PathBuf::from("/var/run/rampdelay").join(u_name)
+    PathBuf::from("/var/run/authramp").join(u_name)
 }

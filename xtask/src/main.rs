@@ -1,7 +1,7 @@
 //! # XTask Module
 //!
 //! The `xtask` module provides a set of development tasks and commands for managing
-//! the `pam-rampdelay` project during development. It utilizes the `xshell` crate for
+//! the `pam-authramp` project during development. It utilizes the `xshell` crate for
 //! shell command execution and automation.
 //!
 //! ## Cargo Configurations
@@ -83,7 +83,7 @@ where
         .expect("Unable to write to file");
 }
 
-/// pam-rampdelay development tool
+/// pam-authramp development tool
 #[derive(Parser, Debug)]
 #[command(arg_required_else_help = true)]
 struct Cli {
@@ -117,7 +117,7 @@ fn main() -> anyhow::Result<()> {
             set_and_remove_sudo_runner(|| {
                 let _ = cmd!(sh, "cargo test -- --test-threads=1 --show-output").run();
                 let _ = cmd!(sh, "sudo rm -f /lib64/security/libpam_authramp.so").run();
-                let _ = cmd!(sh, "sudo rm -rf /var/run/rampdelay").run();
+                let _ = cmd!(sh, "sudo rm -rf /var/run/authramp").run();
             })
         }
         Some(Commands::Lint) => {
@@ -142,7 +142,7 @@ fn main() -> anyhow::Result<()> {
                 )
                 .run();
                 let _ = cmd!(sh, "sudo rm -f /lib64/security/libpam_authramp.so").run();
-                let _ = cmd!(sh, "sudo rm -rf /var/run/rampdelay").run();
+                let _ = cmd!(sh, "sudo rm -rf /var/run/authramp").run();
             })
         }
         None => {}
