@@ -63,6 +63,7 @@ use pam::conv::Conv;
 use pam::module::{PamHandle, PamHooks};
 use pam::pam_try;
 use settings::Settings;
+use std::cmp::min;
 use std::ffi::CStr;
 
 use std::thread::sleep;
@@ -175,12 +176,16 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
                 // Calculate remaining time until unlock
                 let remaining_time = unlock_time - Utc::now();
 
+                // Cap remaining time at 24 hours
+                let capped_remaining_time = min(remaining_time, Duration::hours(24));
+
+
                 // Send a message to the conversation function
                 let _ = conv.send(
                     PAM_ERROR_MSG,
                     &format!(
                         "Account locked! Unlocking in {}.",
-                        format_remaining_time(remaining_time)
+                        format_remaining_time(capped_remaining_time)
                     ),
                 );
 
