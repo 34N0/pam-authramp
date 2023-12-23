@@ -170,15 +170,16 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
             let delay = calc_delay(tally.failures_count, settings);
 
             // Calculate the time when the account will be unlocked
-            let unlock_time = tally.failure_instant + Duration::seconds(delay as i64);
+            let unlock_instant = tally
+                .unlock_instant
+                .unwrap_or(tally.failure_instant + Duration::seconds(delay as i64));
 
-            while Utc::now() < unlock_time {
+            while Utc::now() < unlock_instant {
                 // Calculate remaining time until unlock
-                let remaining_time = unlock_time - Utc::now();
+                let remaining_time = unlock_instant - Utc::now();
 
                 // Cap remaining time at 24 hours
                 let capped_remaining_time = min(remaining_time, Duration::hours(24));
-
 
                 // Send a message to the conversation function
                 let _ = conv.send(

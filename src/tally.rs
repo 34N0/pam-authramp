@@ -1,8 +1,8 @@
 //! # Tally Module
 //!
 //! The `tally` module manages the account lockout status, including the number of authentication
-//! failures and the timestamp of the last failure. It provides functionality to open and update
-//! the tally based on the authentication actions performed.
+//! failures, the timestamp of the last failure, and the unlock time. It provides functionality to open
+//! and update the tally based on authentication actions performed.
 //!
 //! ## Overview
 //!
@@ -16,6 +16,7 @@
 //! - `tally_file`: An optional `PathBuf` representing the path to the file storing tally information.
 //! - `failures_count`: An integer representing the number of authentication failures.
 //! - `failure_instant`: A `DateTime<Utc>` representing the timestamp of the last authentication failure.
+//! - `unlock_instant`: An optional `DateTime<Utc>` representing the time when the account will be unlocked.
 //!
 //! ## License
 //!
@@ -38,7 +39,7 @@
 use std::{fs, path::PathBuf};
 
 use crate::{settings::Settings, Actions};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use ini::Ini;
 use pam::constants::PamResultCode;
 
@@ -52,6 +53,8 @@ pub struct Tally {
     pub failures_count: i32,
     /// A `DateTime<Utc>` representing the timestamp of the last authentication failure.
     pub failure_instant: DateTime<Utc>,
+    /// An optional `DateTime<Utc>` representing the time when the account will be unlocked.
+    pub unlock_instant: Option<DateTime<Utc>>,
 }
 
 impl Default for Tally {
@@ -61,6 +64,7 @@ impl Default for Tally {
             tally_file: None,
             failures_count: 0,
             failure_instant: Utc::now(),
+            unlock_instant: None,
         }
     }
 }
@@ -92,14 +96,23 @@ impl Tally {
                         if let Some(count) = fails_section.get("count") {
                             tally.failures_count = count.parse().unwrap_or(0);
                         }
+
                         if let Some(instant) = fails_section.get("instant") {
                             tally.failure_instant = instant.parse().unwrap_or_default();
                         }
+
+                        if let Some(unlock_instant) = fails_section.get("unlock_instant") {
+                            tally.unlock_instant = Some(unlock_instant.parse().unwrap_or_default());
+                        }
+
                         // Handle specific actions based on settings.action
                         match settings.action {
                             Some(Actions::AUTHSUCC) => {
                                 // If action is AUTHFAIL, update count
                                 tally.failures_count = 0;
+
+                                // Reset unlock_instant to None on AUTHSUCC
+                                tally.unlock_instant = None;
 
                                 // Write the updated values back to the file
                                 let mut i = Ini::new();
@@ -113,11 +126,18 @@ impl Tally {
                                 // If action is AUTHFAIL, update count and instant
                                 tally.failures_count += 1;
                                 tally.failure_instant = Utc::now();
+                                // Set unlock_instant to 24 hours from now
+                                tally.unlock_instant =
+                                    Some(tally.failure_instant + Duration::hours(24));
                                 // Write the updated values back to the file
                                 let mut i = Ini::new();
                                 i.with_section(Some("Fails"))
                                     .set("count", tally.failures_count.to_string())
-                                    .set("instant", tally.failure_instant.to_string());
+                                    .set("instant", tally.failure_instant.to_string())
+                                    .set(
+                                        "unlock_instant",
+                                        tally.unlock_instant.unwrap().to_string(),
+                                    );
 
                                 i.write_to_file(&tally_file)
                                     .map_err(|_| PamResultCode::PAM_SYSTEM_ERR)?;
@@ -171,7 +191,8 @@ mod tests {
         let mut i = Ini::new();
         i.with_section(Some("Fails"))
             .set("count", "42")
-            .set("instant", "2023-01-01T00:00:00Z");
+            .set("instant", "2023-01-01T00:00:00Z")
+            .set("unlock_instant", "2023-01-02T00:00:00Z");
 
         i.write_to_file(tally_file_path).unwrap();
 
@@ -193,6 +214,10 @@ mod tests {
         assert_eq!(
             tally.failure_instant,
             DateTime::parse_from_rfc3339("2023-01-01T00:00:00Z").unwrap()
+        );
+        assert_eq!(
+            tally.unlock_instant.unwrap(),
+            DateTime::parse_from_rfc3339("2023-01-02T00:00:00Z").unwrap()
         );
     }
 
@@ -216,11 +241,13 @@ mod tests {
         assert!(result.is_ok());
         let tally = result.unwrap();
         assert_eq!(tally.failures_count, 0);
+        assert!(tally.unlock_instant.is_none());
 
         // Check if the INI file has been created with default values
         let ini_content = fs::read_to_string(tally_file_path).unwrap();
         assert!(ini_content.contains("[Fails]"));
         assert!(ini_content.contains("count=0"));
+        assert!(!ini_content.contains("unlock_instant="));
     }
 
     #[test]
@@ -233,7 +260,8 @@ mod tests {
         let mut i = Ini::new();
         i.with_section(Some("Fails"))
             .set("count", "2")
-            .set("instant", "2023-01-01T00:00:00Z");
+            .set("instant", "2023-01-01T00:00:00Z")
+            .set("unlock_instant", "2023-01-02T00:00:00Z");
         i.write_to_file(&tally_file_path).unwrap();
 
         // Create settings and call open with AUTHFAIL action
@@ -251,11 +279,11 @@ mod tests {
         // Check if the values are updated on AUTHFAIL
         assert_eq!(tally.failures_count, 3); // Assuming you increment the count
                                              // Also, assert that the instant is updated to the current time
-
+        assert!(tally.unlock_instant.is_some());
         // Optionally, you can assert that the file is updated
         let ini_content = fs::read_to_string(&tally_file_path).unwrap();
         assert!(ini_content.contains("count=3"));
-        // Also, assert the instant value in the INI file
+        // Also, assert the instant and unlock_instant values in the INI file
 
         // Additional assertions as needed
     }
@@ -270,7 +298,8 @@ mod tests {
         let mut i = Ini::new();
         i.with_section(Some("Fails"))
             .set("count", "2")
-            .set("instant", "2023-01-01T00:00:00Z");
+            .set("instant", "2023-01-01T00:00:00Z")
+            .set("unlock_instant", "2023-01-02T00:00:00Z");
         i.write_to_file(&tally_file_path).unwrap();
 
         // Create settings and call open with AUTHSUCC action
@@ -288,5 +317,6 @@ mod tests {
         // Expect tally count to decrease
         let ini_content = fs::read_to_string(&tally_file_path).unwrap();
         assert!(ini_content.contains("count=0"), "Expected tally count = 0");
+        assert!(!ini_content.contains("unlock_instant="));
     }
 }
