@@ -8,26 +8,47 @@ The AuthRamp PAM (Pluggable Authentication Modules) module provides an account l
 
 ## Installation
 1. Copy the `libpam_authramp.so` library to the default PAM library directory. The directory varies for different distributions. For example, in current Fedora versions, the path is `/lib64/security`.
-2. Add the module library calls to the PAM service stack in `/etc/pam.d`:
-```conf
-# Add the preauth parameter before user authentication
-auth        required                                     libpam_authramp.so preauth
-# Local user password authentication; should be sufficient
-auth        sufficient                                   pam_unix.so nullok
-# Add the authfail parameter right after user authentication
-auth        [default=die]                                libpam_authramp.so authfail
+2. Add the module library calls to the PAM service stack in `/etc/pam.d`.
 
-# Add this at the beginning of the account stack
+Add the preauth hook before the authentication module:
+```conf
+auth        required                                     libpam_authramp.so preauth
+```
+The actual authentication module needs to be 'sufficient':
+```conf
+auth        sufficient                                   pam_unix.so
+```
+Add the authfail hook right after the authentication module:
+```conf
+auth        [default=die]                                libpam_authramp.so authfail
+```
+And finally add the module to the top of the account stack:
+```conf
 account     required                                     libpam_authramp.so
 ```
 ## Configuration
 ### authramp.conf
-Create a configuration file under /etc/security/authramp.conf with the following values:
+Create a configuration file under /etc/security/authramp.conf. This is an example configuration:
 ```ini
+; AuthRamp Configuration File
+; This file configures the behavior of the AuthRamp PAM module.
+
 [Settings]
+; Directory where tally information is stored.
+; Each user has a separate file in this directory to track authentication failures.
 tally_dir = /var/run/authramp
+
+; Number of allowed free authentication attempts before applying delays.
+; During these free tries, the module allows authentication without introducing delays.
 free_tries = 6
+
+; Base delay applied to each authentication failure.
+; This is the initial delay applied after the free tries are exhausted.
 base_delay_seconds = 30
+
+; Multiplier for the delay calculation based on the number of failures.
+; The delay for each subsequent failure is calculated as follows:
+; delay = ramp_multiplier * (fails - free_tries) * ln(fails - free_tries) + base_delay_seconds
 ramp_multiplier = 50
 ```
 ### default delay
