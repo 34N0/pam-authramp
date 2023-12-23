@@ -206,6 +206,25 @@ pub struct Pamauthramp;
 
 pam::pam_hooks!(Pamauthramp);
 impl PamHooks for Pamauthramp {
+    /// Handles the `sm_authenticate` PAM hook, which is invoked during the authentication process.
+    ///
+    /// This function initializes the AuthRamp module by setting up user information and loading settings.
+    /// 
+    /// This can be called with the PREAUTH action argument:
+    /// auth        required                                     libpam_authramp.so preauth
+    /// It then checks if an account is locked. And if that is true it bounces the auth.
+    /// 
+    /// It can also be called with the AUTHFAIL action argument:
+    /// auth        [default=die]                                libpam_authramp.so authfail
+    /// It then locks the account and increments the delay.
+    ///
+    /// # Arguments
+    /// - `pamh`: PamHandle instance for interacting with PAM
+    /// - `args`: PAM arguments provided during authentication
+    /// - `flags`: PAM flags indicating the context of the PAM operation
+    ///
+    /// # Returns
+    /// PAM_SUCCESS OR PAM_AUTH_ERR
     fn sm_authenticate(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
         init_authramp(pamh, args, flags, |pamh, settings, tally| {
             // match action parameter
@@ -226,6 +245,20 @@ impl PamHooks for Pamauthramp {
         .unwrap_or(PamResultCode::PAM_SUCCESS)
     }
 
+    /// Handles the `acct_mgmt` PAM hook, which is invoked during the account management process.
+    ///
+    /// This function initializes the AuthRamp module by setting up user information and loading settings.
+    /// 
+    /// This hook is only called on sucessful authentication and clears the tally to unlock the account:
+    /// account     required                                     libpam_authramp.so
+    ///
+    /// # Arguments
+    /// - `pamh`: PamHandle instance for interacting with PAM
+    /// - `args`: PAM arguments provided during account management
+    /// - `flags`: PAM flags indicating the context of the PAM operation
+    ///
+    /// # Returns
+    /// PAM_SUCESS OR PAM_SYS_ERR
     fn acct_mgmt(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
         pam_try!(init_authramp(
             pamh,

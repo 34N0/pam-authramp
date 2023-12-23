@@ -1,0 +1,27 @@
+# /etc/pam.d/system-auth
+# based on default fedora 38 pam service stack 
+
+auth        required                                     pam_env.so
+auth        [default=1 ignore=ignore success=ok]         pam_usertype.so isregular
+auth        [default=1 ignore=ignore success=ok]         pam_localuser.so
+auth        required                                     libpam_authramp.so preauth
+auth        sufficient                                   pam_unix.so
+auth        [default=die]                                libpam_authramp.so authfail
+auth        [default=1 ignore=ignore success=ok]         pam_usertype.so isregular
+auth        sufficient                                   pam_sss.so forward_pass
+auth        required                                     pam_deny.so
+
+account     required                                     libpam_authramp.so
+account     required                                     pam_unix.so
+account     sufficient                                   pam_localuser.so
+account     sufficient                                   pam_usertype.so issystem
+account     [default=bad success=ok user_unknown=ignore] pam_sss.so
+account     required                                     pam_permit.so
+
+password    requisite                                    pam_pwquality.so local_users_only
+password    sufficient                                   pam_unix.so yescrypt shadow nullok use_authtok
+password    [success=1 default=ignore]                   pam_localuser.so
+password    sufficient                                   pam_sss.so use_authtok
+password    required                                     pam_deny.so
+
+session     optional                                     pam_keyinit.so revoke
