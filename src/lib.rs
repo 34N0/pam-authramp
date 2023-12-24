@@ -114,22 +114,6 @@ where
     pam_hook(pamh, &settings, &tally)
 }
 
-/// Calculates the delay based on the number of authentication failures and settings.
-/// Uses the authramp formula: delay=ramp_multiplier×(fails − free_tries)×ln(fails − free_tries)+base_delay_seconds
-///
-/// # Arguments
-/// - `fails`: Number of authentication failures
-/// - `settings`: Settings for the authramp module
-///
-/// # Returns
-/// Calculated delay as a floating-point number
-fn calc_delay(fails: i32, settings: &Settings) -> f64 {
-    settings.ramp_multiplier as f64
-        * (fails as f64 - settings.free_tries as f64)
-        * ((fails as f64 - settings.free_tries as f64).ln())
-        + settings.base_delay_seconds as f64
-}
-
 /// Formats a Duration into a human-readable string representation.
 /// The format includes hours, minutes, and seconds, excluding zero values.
 ///
@@ -167,12 +151,12 @@ fn format_remaining_time(remaining_time: Duration) -> String {
 fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamResultCode {
     if tally.failures_count > settings.free_tries {
         if let Ok(Some(conv)) = pamh.get_item::<Conv>() {
-            let delay = calc_delay(tally.failures_count, settings);
+            let delay = tally.get_delay(settings);
 
             // Calculate the time when the account will be unlocked
             let unlock_instant = tally
                 .unlock_instant
-                .unwrap_or(tally.failure_instant + Duration::seconds(delay as i64));
+                .unwrap_or(tally.failure_instant + delay);
 
             while Utc::now() < unlock_instant {
                 // Calculate remaining time until unlock
@@ -209,11 +193,11 @@ impl PamHooks for Pamauthramp {
     /// Handles the `sm_authenticate` PAM hook, which is invoked during the authentication process.
     ///
     /// This function initializes the AuthRamp module by setting up user information and loading settings.
-    /// 
+    ///
     /// This can be called with the PREAUTH action argument:
     /// auth        required                                     libpam_authramp.so preauth
     /// It then checks if an account is locked. And if that is true it bounces the auth.
-    /// 
+    ///
     /// It can also be called with the AUTHFAIL action argument:
     /// auth        [default=die]                                libpam_authramp.so authfail
     /// It then locks the account and increments the delay.
@@ -248,7 +232,7 @@ impl PamHooks for Pamauthramp {
     /// Handles the `acct_mgmt` PAM hook, which is invoked during the account management process.
     ///
     /// This function initializes the AuthRamp module by setting up user information and loading settings.
-    /// 
+    ///
     /// This hook is only called on sucessful authentication and clears the tally to unlock the account:
     /// account     required                                     libpam_authramp.so
     ///

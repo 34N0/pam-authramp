@@ -151,6 +151,45 @@ mod test_pam_auth {
             // Expect tally count to decrease
             let ini_content = fs::read_to_string(&tally_file_path).unwrap();
             assert!(ini_content.contains("count=0"), "Expected tally count = 0");
-        })
+        });
+    }
+
+    #[test]
+    fn test_exceeding_free_tries_causes_bounce() {
+        utils::init_and_clear_test(|| {
+            let user_name = "user";
+            let user_pwd = "INVALID PASSWORD";
+
+            // Step 0: Attempt authentication
+            let mut ctx = get_pam_context(user_name, user_pwd);
+
+            // Expect an error during authentication (invalid credentials)
+            let auth_result = ctx.authenticate(Flag::NONE);
+            assert!(auth_result.is_err(), "Authentication succeeded!");
+
+            // Expect tally file gets created
+            let tally_file_path = utils::get_tally_file_path(USER_NAME);
+            assert!(tally_file_path.exists(), "Tally file not created");
+
+            let mut a_count = 0;
+
+            while a_count < 6 {
+                // Expect an error during authentication (invalid credentials)
+                let auth_result = ctx.authenticate(Flag::NONE);
+                assert!(auth_result.is_err(), "Authentication succeeded!");
+                a_count += 1;
+            }
+
+            // Check if the conversation log contains the expected bounce message
+            let bounce_message = "Account locked! Unlocking in";
+            let log = &ctx.conversation().log;
+
+            let log_str = format!("{:?}", log);
+
+            assert!(
+                log_str.contains(bounce_message),
+                "Conversation log does not contain expected bounce message"
+            );
+        });
     }
 }
