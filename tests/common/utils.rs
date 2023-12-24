@@ -83,7 +83,7 @@ fn remove_pam_service_file() -> io::Result<()> {
 }
 
 fn clear_tally_dir() -> Result<(), io::Error> {
-    remove_dir_all("/var/run/authramp")?;
+    let _ = remove_dir_all("/var/run/authramp");
     Ok(())
 }
 
@@ -91,6 +91,7 @@ pub fn init_and_clear_test<F>(test: F)
 where
     F: FnOnce(),
 {
+    clear_tally_dir().expect("Failes clearing tally dir");
     create_pam_service_file().expect("Failed to create PAM service file");
     test();
     remove_pam_service_file().expect("Failed to remove PAM service file");
