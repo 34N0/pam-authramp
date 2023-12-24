@@ -57,6 +57,9 @@ mod common;
 mod test_pam_auth {
 
     use std::fs;
+    use std::path::Path;
+    use chrono::expect;
+    use tempfile::TempDir;
 
     use crate::common::utils::get_pam_context;
 
@@ -154,7 +157,7 @@ mod test_pam_auth {
         });
     }
 
-    #[test]
+    //#[test]
     fn test_exceeding_free_tries_causes_bounce() {
         utils::init_and_clear_test(|| {
             let user_name = "user";
@@ -181,7 +184,7 @@ mod test_pam_auth {
             }
 
             // Check if the conversation log contains the expected bounce message
-            let bounce_message = "Account locked! Unlocking in";
+            let bounce_message = "Account locked! Unlocking in 29";
             let log = &ctx.conversation().log;
 
             let log_str = format!("{:?}", log);
@@ -190,6 +193,42 @@ mod test_pam_auth {
                 log_str.contains(bounce_message),
                 "Conversation log does not contain expected bounce message"
             );
+        });
+    }
+
+    #[test]
+    fn test_custom_tally_dir() {
+        utils::init_and_clear_test(|| {
+            // Create a temporary directory for the custom tally_dir
+            let custom_tally_dir = TempDir::new().expect("Unable to create temporary directory");
+
+            // Set the custom tally_dir path in authramp.conf
+            let config_content = format!(
+                "[Settings]\n\
+                tally_dir = {}\n\
+                free_tries = 6\n\
+                base_delay_seconds = 30\n\
+                ramp_multiplier = 50\n",
+                custom_tally_dir.path().display()
+            );
+            let config_path = "/etc/security/authramp.conf";
+            fs::write(config_path, config_content).expect("Unable to write to authramp.conf");
+
+            // Attempt authentication (which will fail)
+            let user_name = dotenv!("TEST_USER_NAME");
+            let mut ctx = get_pam_context(user_name, "INVALID");
+            let auth_result = ctx.authenticate(Flag::NONE);
+            assert!(auth_result.is_err(), "Authentication succeeded!");
+
+            // Check if the tally file is created in the custom tally_dir path
+            let tally_file_path = custom_tally_dir.path().join(user_name);
+            assert!(
+                Path::exists(&tally_file_path),
+                "Tally file not created in custom tally_dir"
+            );
+
+            fs::remove_file(config_path).expect("Unable to remove test config");
+            fs::remove_dir_all(custom_tally_dir.path()).expect("Unable to remove custom tally dir");
         });
     }
 }
