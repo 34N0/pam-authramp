@@ -70,6 +70,24 @@ impl Default for Tally {
 }
 
 impl Tally {
+    /// Calculates the delay based on the number of authentication failures and settings.
+    /// Uses the authramp formula: delay=ramp_multiplier×(fails − free_tries)×ln(fails − free_tries)+base_delay_seconds
+    ///
+    /// # Arguments
+    /// - `fails`: Number of authentication failures
+    /// - `settings`: Settings for the authramp module
+    ///
+    /// # Returns
+    /// Calculated delay as a floating-point number
+    pub fn get_delay(&self, settings: &Settings) -> Duration {
+        Duration::seconds(
+            (settings.ramp_multiplier as f64
+                * (self.failures_count as f64 - settings.free_tries as f64)
+                * ((self.failures_count as f64 - settings.free_tries as f64).ln())
+                + settings.base_delay_seconds as f64) as i64,
+        )
+    }
+
     /// Opens or creates the tally file based on the provided `Settings`.
     ///
     /// If the file exists, loads the values; if not, creates the file with default values.
@@ -126,9 +144,16 @@ impl Tally {
                                 // If action is AUTHFAIL, update count and instant
                                 tally.failures_count += 1;
                                 tally.failure_instant = Utc::now();
-                                // Set unlock_instant to 24 hours from now
-                                tally.unlock_instant =
-                                    Some(tally.failure_instant + Duration::hours(24));
+
+                                let mut delay = tally.get_delay(settings);
+
+                                // Cap unlock_instant at 24 hours from now
+                                if delay > Duration::hours(24) {
+                                    delay = Duration::hours(24)
+                                }
+
+                                tally.unlock_instant = Some(tally.failure_instant + delay);
+
                                 // Write the updated values back to the file
                                 let mut i = Ini::new();
                                 i.with_section(Some("Fails"))
