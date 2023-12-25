@@ -54,6 +54,8 @@ pub struct Settings {
     pub base_delay_seconds: i32,
     // Multiplier for the delay calculation based on the number of failures.
     pub ramp_multiplier: i32,
+    // PAM Hook
+    pub pam_hook: String,
 }
 
 impl Default for Settings {
@@ -66,6 +68,7 @@ impl Default for Settings {
             free_tries: 6,
             base_delay_seconds: 30,
             ramp_multiplier: 50,
+            pam_hook: String::from("auth"),
         }
     }
 }
@@ -129,6 +132,7 @@ impl Settings {
         args: Vec<&CStr>,
         _flags: PamFlag,
         config_file: Option<PathBuf>,
+        pam_hook: &str,
     ) -> Result<Settings, PamResultCode> {
         // Load INI file.
         let mut settings = Self::load_conf_file(config_file);
@@ -155,6 +159,9 @@ impl Settings {
 
         // get user
         settings.user = Some(user.ok_or(PamResultCode::PAM_SYSTEM_ERR)?);
+
+        // pam hook
+        settings.pam_hook = String::from(pam_hook);
 
         Ok(settings)
     }
@@ -201,6 +208,7 @@ mod tests {
             args,
             flags,
             Some(ini_file_path),
+            "test",
         );
 
         assert!(result.is_ok());
@@ -218,7 +226,13 @@ mod tests {
     fn test_build_settings_missing_action() {
         let args = vec![];
         let flags: PamFlag = 0;
-        let result = Settings::build(Some(User::new(9999, "test_user", 9999)), args, flags, None);
+        let result = Settings::build(
+            Some(User::new(9999, "test_user", 9999)),
+            args,
+            flags,
+            None,
+            "test",
+        );
         assert!(result.is_ok());
     }
 
@@ -226,7 +240,7 @@ mod tests {
     fn test_build_settings_missing_user() {
         let args = [CStr::from_bytes_with_nul("preauth\0".as_bytes()).unwrap()].to_vec();
         let flags: PamFlag = 0;
-        let result = Settings::build(None, args, flags, None);
+        let result = Settings::build(None, args, flags, None, "test");
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), PamResultCode::PAM_SYSTEM_ERR);
     }
