@@ -58,7 +58,6 @@ mod test_pam_auth {
 
     use std::fs;
     use std::path::Path;
-    use chrono::expect;
     use tempfile::TempDir;
 
     use crate::common::utils::get_pam_context;
@@ -157,7 +156,7 @@ mod test_pam_auth {
         });
     }
 
-    //#[test]
+    #[test]
     fn test_exceeding_free_tries_causes_bounce() {
         utils::init_and_clear_test(|| {
             let user_name = "user";

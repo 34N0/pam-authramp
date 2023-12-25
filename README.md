@@ -72,6 +72,14 @@ delay = r * (f - f₀) * log(f - f₀) + b
 ### tally file
 The tally file tracks failed attempts. Per default, it is stored in `/var/run/authramp/<user>`. To reset and unlock any user, simply delete the file.
 
+## Logging
+The module generates logs following the PAM module logging style. For instance, the logging entries created during integration tests serve as examples.
+```console
+Dec 25 01:48:03 fedora test_pam_auth-8[89228]: pam_authramp(test-authramp:auth): PAM_AUTH_ERR: Added tally (7 failures) for the "test_user" account. Account is locked until 2023-12-25 00:48:33.426241855 UTC.
+Dec 25 01:48:03 fedora test_pam_auth-8[89228]: pam_authramp(test-authramp:auth): PAM_AUTH_ERR: Account "test_user" is getting bounced. Account still locked until 2023-12-25 00:48:33.426241855 UTC
+Dec 25 01:48:40 fedora test_pam_auth-8[89228]: pam_authramp(test-authramp:auth): PAM_SUCCESS: Clear tally (1 failures) for the "test_user" account. Account is unlocked.
+```
+
 ## Threat Model
 
 The primary objective of pam-authramp is to enhance the security of Linux systems by implementing a dynamic account lockout mechanism based on the number of consecutive failed authentication attempts. This module aims to prevent unauthorized access to user accounts, mitigate brute-force attacks, and provide an additional layer of protection against malicious activities.

@@ -49,6 +49,7 @@
 
 mod settings;
 mod tally;
+mod utils;
 
 extern crate chrono;
 extern crate ini;
@@ -94,6 +95,7 @@ fn init_authramp<F, R>(
     pamh: &mut PamHandle,
     _args: Vec<&CStr>,
     _flags: PamFlag,
+    pam_hook_desc: &str,
     pam_hook: F,
 ) -> Result<R, PamResultCode>
 where
@@ -106,7 +108,9 @@ where
     ));
 
     // Read configuration file
-    let settings = Settings::build(user.clone(), _args, _flags, None)?;
+    let settings = Settings::build(user.clone(), _args, _flags, None, pam_hook_desc)?;
+
+    utils::syslog::init_log(pamh, &settings)?;
 
     // Get and Set tally
     let tally = Tally::open(&settings)?;
@@ -157,6 +161,12 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
             let unlock_instant = tally
                 .unlock_instant
                 .unwrap_or(tally.failure_instant + delay);
+
+            syslog_info!(
+                "PAM_AUTH_ERR: Account {:?} is getting bounced. Account still locked until {}",
+                settings.user.as_ref().unwrap().name(),
+                unlock_instant,
+            );
 
             while Utc::now() < unlock_instant {
                 // Calculate remaining time until unlock
@@ -210,7 +220,7 @@ impl PamHooks for Pamauthramp {
     /// # Returns
     /// PAM_SUCCESS OR PAM_AUTH_ERR
     fn sm_authenticate(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        init_authramp(pamh, args, flags, |pamh, settings, tally| {
+        init_authramp(pamh, args, flags, "auth", |pamh, settings, tally| {
             // match action parameter
             match settings.action {
                 Some(Actions::PREAUTH) => {
@@ -248,6 +258,7 @@ impl PamHooks for Pamauthramp {
             pamh,
             args,
             flags,
+            "account",
             |_pamh, _settings, _tally| { Ok(PamResultCode::PAM_SUCCESS) }
         ))
     }
