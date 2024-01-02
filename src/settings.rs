@@ -42,10 +42,6 @@ const DEFAULT_CONFIG_FILE_PATH: &str = "/etc/security/authramp.conf";
 // Settings struct represents the configuration loaded from default values, configuration file and parameters
 #[derive(Debug)]
 pub struct Settings {
-    // PAM action
-    pub action: Option<Actions>,
-    // PAM user
-    pub user: Option<User>,
     // Directory where tally information is stored.
     pub tally_dir: PathBuf,
     // Number of allowed free authentication attempts before applying delays.
@@ -56,6 +52,10 @@ pub struct Settings {
     pub ramp_multiplier: i32,
     // PAM Hook
     pub pam_hook: String,
+    // PAM action
+    pub action: Option<Actions>,
+    // PAM user
+    pub user: Option<User>,
 }
 
 impl Default for Settings {
@@ -74,6 +74,81 @@ impl Default for Settings {
 }
 
 impl Settings {
+    /// Constructs a `Settings` instance based on input parameters, including user
+    /// information, PAM flags, and an optional configuration file path.
+    ///
+    /// # Arguments
+    ///
+    /// * `user`: An optional `User` instance representing the user associated with
+    ///   the PAM session.
+    /// * `args`: A vector of CStr references representing the PAM module arguments.
+    /// * `_flags`: PAM flags indicating the context of the PAM operation (unused).
+    /// * `config_file`: An optional `PathBuf` specifying the path to the INI file. If
+    ///   not provided, the default configuration file path is used.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the constructed `Settings` instance or a `PamResultCode`
+    /// indicating an error during the construction process.
+    pub fn build(
+        user: Option<User>,
+        args: Vec<&CStr>,
+        _flags: PamFlag,
+        config_file: Option<PathBuf>,
+        pam_hook: &str,
+    ) -> Result<Settings, PamResultCode> {
+        // Load INI file.
+        let mut settings = Self::load_conf_file(config_file);
+
+        // create possible action collection
+        let action_map: HashMap<&str, Actions> = [
+            ("preauth", Actions::PREAUTH),
+            ("authsucc", Actions::AUTHSUCC),
+            ("authfail", Actions::AUTHFAIL),
+        ]
+        .iter()
+        .cloned()
+        .collect();
+
+        // map argument to action
+        settings.action = args.iter().find_map(|&carg| {
+            carg.to_str()
+                .ok()
+                .and_then(|arg| action_map.get(arg).cloned())
+        });
+
+        // set default action if none is provided
+        settings.action.get_or_insert(Actions::AUTHSUCC);
+
+        // get user
+        settings.user = Some(user.ok_or(PamResultCode::PAM_SYSTEM_ERR)?);
+
+        // pam hook
+        settings.pam_hook = String::from(pam_hook);
+
+        Ok(settings)
+    }
+
+    /// Gets the PAM action associated with the current settings.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the PAM action (`Actions`) if available, or a `PamResultCode`
+    /// aborting Pam Authentication if the action is not present.
+    pub fn get_action(&self) -> Result<Actions, PamResultCode> {
+        self.action.ok_or(PamResultCode::PAM_ABORT)
+    }
+
+    /// Gets the PAM user associated with the current settings.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing a reference to the PAM user (`&User`) if available, or a `PamResultCode`
+    /// indicating a user_unknown error if the user is not present.
+    pub fn get_user(&self) -> Result<&User, PamResultCode> {
+        self.user.as_ref().ok_or(PamResultCode::PAM_USER_UNKNOWN)
+    }
+
     /// Loads configuration settings from an INI file, returning a `Settings` instance.
     ///
     /// # Arguments
@@ -109,61 +184,6 @@ impl Settings {
                 ..Settings::default()
             })
             .unwrap_or_default()
-    }
-
-    /// Constructs a `Settings` instance based on input parameters, including user
-    /// information, PAM flags, and an optional configuration file path.
-    ///
-    /// # Arguments
-    ///
-    /// * `user`: An optional `User` instance representing the user associated with
-    ///   the PAM session.
-    /// * `args`: A vector of CStr references representing the PAM module arguments.
-    /// * `_flags`: PAM flags indicating the context of the PAM operation (unused).
-    /// * `config_file`: An optional `PathBuf` specifying the path to the INI file. If
-    ///   not provided, the default configuration file path is used.
-    ///
-    /// # Returns
-    ///
-    /// A `Result` containing the constructed `Settings` instance or a `PamResultCode`
-    /// indicating an error during the construction process.
-    pub fn build(
-        user: Option<User>,
-        args: Vec<&CStr>,
-        _flags: PamFlag,
-        config_file: Option<PathBuf>,
-        pam_hook: &str,
-    ) -> Result<Settings, PamResultCode> {
-        // Load INI file.
-        let mut settings = Self::load_conf_file(config_file);
-
-        // create possible action collection
-        let action_map: HashMap<&str, Actions> = [
-            ("preauth", Actions::PREAUTH),
-            ("authsucc", Actions::AUTHSUCC),
-            ("authfail", Actions::AUTHFAIL),
-        ]
-        .iter()
-        .copied()
-        .collect();
-
-        // map argument to action
-        settings.action = args.iter().find_map(|&carg| {
-            carg.to_str()
-                .ok()
-                .and_then(|arg| action_map.get(arg).cloned())
-        });
-
-        // set default action if none is provided
-        settings.action.get_or_insert(Actions::AUTHSUCC);
-
-        // get user
-        settings.user = Some(user.ok_or(PamResultCode::PAM_SYSTEM_ERR)?);
-
-        // pam hook
-        settings.pam_hook = String::from(pam_hook);
-
-        Ok(settings)
     }
 }
 

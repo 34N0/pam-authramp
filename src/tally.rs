@@ -36,12 +36,16 @@
 //! You should have received a copy of the GNU General Public License
 //! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use crate::{settings::Settings, syslog_error, syslog_info, Actions};
 use chrono::{DateTime, Duration, Utc};
 use ini::Ini;
 use pam::constants::PamResultCode;
+use users::User;
 
 /// The `Tally` struct represents the account lockout information, including
 /// the number of authentication failures and the timestamp of the last failure.
@@ -94,146 +98,203 @@ impl Tally {
     /// Updates the tally based on authentication actions, such as successful or failed attempts.
     ///
     /// # Arguments
-    /// - settings: Settings struct
+    /// - `settings`: A reference to the `Settings` struct.
     ///
     /// # Returns
-    /// Tally struct or PAM_AUTH_ERR
-    pub fn open(settings: &Settings) -> Result<Self, PamResultCode> {
+    /// A `Result` containing either the `Tally` struct or a `PAM_AUTH_ERR`.
+    pub fn new_from_tally_file(settings: &Settings) -> Result<Self, PamResultCode> {
         let mut tally = Tally::default();
-        let user = settings.user.as_ref().ok_or_else(|| {
-            syslog_error!("PAM_SYSTEM_ERR: PAM user is none!");
-            PamResultCode::PAM_SYSTEM_ERR
-        })?;
+        let user = settings.get_user()?;
+
         let tally_file = settings.tally_dir.join(user.name());
 
-        // Check if the file exists
-        let result = if tally_file.exists() {
-            // If the file exists, attempt to load values from it
-            Ini::load_from_file(&tally_file)
-                .map_err(|e| {
-                    syslog_error!("PAM_SYSTEM_ERR: Error reading tally file: {}", e);
-                    PamResultCode::PAM_SYSTEM_ERR
-                })
-                .and_then(|i| {
-                    // If the "Fails" section exists, extract and set values
-                    if let Some(fails_section) = i.section(Some("Fails")) {
-                        if let Some(count) = fails_section.get("count") {
-                            tally.failures_count = count.parse().unwrap_or(0);
-                        }
-
-                        if let Some(instant) = fails_section.get("instant") {
-                            tally.failure_instant = instant.parse().unwrap_or_default();
-                        }
-
-                        if let Some(unlock_instant) = fails_section.get("unlock_instant") {
-                            tally.unlock_instant = Some(unlock_instant.parse().unwrap_or_default());
-                        }
-
-                        // Handle specific actions based on settings.action
-                        match settings.action {
-                            Some(Actions::AUTHSUCC) => {
-                                // total failures for logging
-                                let total_failures = tally.failures_count;
-
-                                // If action is AUTHFAIL, update count
-                                tally.failures_count = 0;
-
-                                // Reset unlock_instant to None on AUTHSUCC
-                                tally.unlock_instant = None;
-
-                                // Write the updated values back to the file
-                                let mut i = Ini::new();
-                                i.with_section(Some("Fails"))
-                                    .set("count", tally.failures_count.to_string());
-
-                                i.write_to_file(&tally_file)
-                                    .map_err(|e| {
-                                        syslog_error!("PAM_SYSTEM_ERR: Error reseting tally: {}", e);
-                                        PamResultCode::PAM_SYSTEM_ERR
-                                    })?;
-
-                                // log account unlock
-                                if total_failures > 0 {
-                                    syslog_info!(
-                                        "PAM_SUCCESS: Clear tally ({} failures) for the {:?} account. Account is unlocked.",
-                                        total_failures,
-                                        user.name()
-                                    );
-                                }
-                            }
-                            Some(Actions::AUTHFAIL) => {
-                                // If action is AUTHFAIL, update count and instant
-                                tally.failures_count += 1;
-                                tally.failure_instant = Utc::now();
-
-                                let mut delay = tally.get_delay(settings);
-
-                                // Cap unlock_instant at 24 hours from now
-                                if delay > Duration::hours(24) {
-                                    delay = Duration::hours(24)
-                                }
-
-                                tally.unlock_instant = Some(tally.failure_instant + delay);
-
-                                // Write the updated values back to the file
-                                let mut i = Ini::new();
-                                i.with_section(Some("Fails"))
-                                    .set("count", tally.failures_count.to_string())
-                                    .set("instant", tally.failure_instant.to_string())
-                                    .set(
-                                        "unlock_instant",
-                                        tally.unlock_instant.unwrap().to_string(),
-                                    );
-
-                                i.write_to_file(&tally_file)
-                                    .map_err(|e| {
-                                        syslog_error!("PAM_SYSTEM_ERR: Error writing tally file: {}", e);
-                                        PamResultCode::PAM_SYSTEM_ERR
-                                    })?;
-
-                                if tally.failures_count > settings.free_tries {
-                                // log account unlock
-
-                                syslog_info!(
-                                    "PAM_AUTH_ERR: Added tally ({} failures) for the {:?} account. Account is locked until {}.",
-                                    tally.failures_count,
-                                    user.name(),
-                                    tally.unlock_instant.unwrap()
-                                );
-                            }
-                            }
-                            _ => {}
-                        }
-                        Ok(())
-                    } else {
-                        // If the section doesn't exist, return an error
-                        syslog_error!("PAM_SYSTEM_ERR: Error reading tally file: [SETTINGS] section does not exist");
-                        Err(PamResultCode::PAM_SYSTEM_ERR)
-                    }
-                })
+        if tally_file.exists() {
+            Self::load_tally_from_file(&mut tally, user, &tally_file, settings)?
         } else {
-            // If the file doesn't exist, create it
-            fs::create_dir_all(tally_file.parent().unwrap()).map_err(|e| {
-                syslog_error!("PAM_SYSTEM_ERR: Error creating tally file: {}", e);
-                PamResultCode::PAM_SYSTEM_ERR
-            })?;
-
-            let mut i = Ini::new();
-            i.with_section(Some("Fails"))
-                .set("count", tally.failures_count.to_string())
-                .set("instant", tally.failure_instant.to_string());
-
-            // Write the INI file to disk
-            i.write_to_file(&tally_file).map_err(|e| {
-                syslog_error!("PAM_SYSTEM_ERR: Error writing tally file: {}", e);
-                PamResultCode::PAM_SYSTEM_ERR
-            })?;
-
-            Ok(())
+            Self::create_tally_file(&mut tally, &tally_file, settings)?
         };
 
-        // Map the final result to the Tally structure
-        result.map(|_| tally)
+        Ok(tally)
+    }
+
+    /// Loads tally information from an existing file.
+    ///
+    /// # Arguments
+    /// - `tally_file`: A reference to the tally file `Path`.
+    /// - `tally`: A mutable reference to the `Tally` struct.
+    /// - `settings`: A reference to the `Settings` struct.
+    ///
+    /// # Returns
+    /// A `Result` indicating success or a `PAM_SYSTEM_ERR` in case of errors.
+    fn load_tally_from_file(
+        tally: &mut Tally,
+        user: &User,
+        tally_file: &Path,
+        settings: &Settings,
+    ) -> Result<(), PamResultCode> {
+        Ini::load_from_file(tally_file)
+            .map_err(|e| {
+                syslog_error!("PAM_SYSTEM_ERR: Error reading tally file: {}", e);
+                PamResultCode::PAM_SYSTEM_ERR
+            })
+            .and_then(|i| {
+                // If the "Fails" section exists, extract and set values
+                if let Some(fails_section) = i.section(Some("Fails")) {
+                    Some(fails_section)
+    .map(|section| {
+
+        tally.failures_count = section.get("count")
+        .map(|count| count.parse())
+        .transpose()
+        .map_err(|_e| { PamResultCode::PAM_SYSTEM_ERR })?
+        .unwrap_or_default();
+
+        tally.failure_instant = section.get("instant")
+        .map(|instant| instant.parse())
+        .transpose().map_err(|_e| { PamResultCode::PAM_SYSTEM_ERR })?
+        .unwrap_or_default();
+
+        tally.unlock_instant = section.get("unlock_instant")
+        .map(|unlock_instant| unlock_instant.parse())
+        .transpose()
+        .map_err(|_e| { PamResultCode::PAM_SYSTEM_ERR })?;
+
+        Ok(())
+    })
+    .transpose()?;
+                } else {
+                    // If the section doesn't exist, return an error
+                    syslog_error!("PAM_SYSTEM_ERR: Error reading tally file: [SETTINGS] section does not exist");
+                    return Err(PamResultCode::PAM_SYSTEM_ERR);
+                }
+
+                Self::update_tally_from_section(tally, user, tally_file, settings)
+            })
+    }
+
+    /// Updates tally information based on a section from the tally file.
+    ///
+    /// AUTHSUCC deteltes the tally
+    /// AUTHERR increases the tally
+    /// PREAUTH is ignored;
+    ///
+    /// # Arguments
+    /// - `fails_section`: A reference to the "Fails" section of the INI file.
+    /// - `tally`: A mutable reference to the `Tally` struct.
+    /// - `settings`: A reference to the `Settings` struct.
+    ///
+    /// # Returns
+    /// A `Result` indicating success or a `PAM_SYSTEM_ERR` in case of errors.
+    fn update_tally_from_section(
+        tally: &mut Tally,
+        user: &User,
+        tally_file: &Path,
+        settings: &Settings,
+    ) -> Result<(), PamResultCode> {
+        // Handle specific actions based on settings.action
+        match settings.get_action()? {
+            Actions::PREAUTH => return Ok(()),
+            Actions::AUTHSUCC => {
+                // total failures for logging
+                let total_failures = tally.failures_count;
+
+                // If action is AUTHFAIL, update count
+                tally.failures_count = 0;
+
+                // Reset unlock_instant to None on AUTHSUCC
+                tally.unlock_instant = None;
+
+                // Write the updated values back to the file
+                let mut i = Ini::new();
+                i.with_section(Some("Fails"))
+                    .set("count", tally.failures_count.to_string());
+
+                i.write_to_file(tally_file).map_err(|e| {
+                    syslog_error!("PAM_SYSTEM_ERR: Error reseting tally: {}", e);
+                    PamResultCode::PAM_SYSTEM_ERR
+                })?;
+
+                // log account unlock
+                if total_failures > 0 {
+                    syslog_info!(
+                        "PAM_SUCCESS: Clear tally ({} failures) for the {:?} account. Account is unlocked.",
+                        total_failures,
+                        user.name()
+                    );
+                }
+            }
+            Actions::AUTHFAIL => {
+                // If action is AUTHFAIL, update count and instant
+                tally.failures_count += 1;
+                tally.failure_instant = Utc::now();
+
+                let mut delay = tally.get_delay(settings);
+
+                // Cap unlock_instant at 24 hours from now
+                if delay > Duration::hours(24) {
+                    delay = Duration::hours(24)
+                }
+
+                tally.unlock_instant = Some(tally.failure_instant + delay);
+
+                // Write the updated values back to the file
+                let mut i = Ini::new();
+                i.with_section(Some("Fails"))
+                    .set("count", tally.failures_count.to_string())
+                    .set("instant", tally.failure_instant.to_string())
+                    .set("unlock_instant", tally.unlock_instant.unwrap().to_string());
+
+                i.write_to_file(tally_file).map_err(|e| {
+                    syslog_error!("PAM_SYSTEM_ERR: Error writing tally file: {}", e);
+                    PamResultCode::PAM_SYSTEM_ERR
+                })?;
+
+                if tally.failures_count > settings.free_tries {
+                    // log account unlock
+
+                    syslog_info!(
+                    "PAM_AUTH_ERR: Added tally ({} failures) for the {:?} account. Account is locked until {}.",
+                    tally.failures_count,
+                    user.name(),
+                    tally.unlock_instant.unwrap()
+                );
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Creates a new tally file with default values.
+    ///
+    /// # Arguments
+    /// - `tally_file`: A reference to the tally file `Path`.
+    /// - `tally`: A mutable reference to the `Tally` struct.
+    /// - `settings`: A reference to the `Settings` struct.
+    ///
+    /// # Returns
+    /// A `Result` indicating success or a `PAM_SYSTEM_ERR` in case of errors.
+    fn create_tally_file(
+        tally: &mut Tally,
+        tally_file: &Path,
+        _settings: &Settings,
+    ) -> Result<(), PamResultCode> {
+        fs::create_dir_all(tally_file.parent().unwrap()).map_err(|e| {
+            syslog_error!("PAM_SYSTEM_ERR: Error creating tally file: {}", e);
+            PamResultCode::PAM_SYSTEM_ERR
+        })?;
+
+        let mut ini = Ini::new();
+        ini.with_section(Some("Fails"))
+            .set("count", tally.failures_count.to_string())
+            .set("instant", tally.failure_instant.to_string());
+
+        // Write the INI file to disk
+        ini.write_to_file(tally_file).map_err(|e| {
+            syslog_error!("PAM_SYSTEM_ERR: Error writing tally file: {}", e);
+            PamResultCode::PAM_SYSTEM_ERR
+        })?;
+
+        Ok(())
     }
 }
 
@@ -269,7 +330,7 @@ mod tests {
         };
 
         // Test: Open existing tally file
-        let result = Tally::open(&settings);
+        let result = Tally::new_from_tally_file(&settings);
 
         // Check if the Tally struct is created with expected values
         assert!(result.is_ok());
@@ -299,7 +360,7 @@ mod tests {
         };
 
         // Test: Open nonexistent tally file
-        let result = Tally::open(&settings);
+        let result = Tally::new_from_tally_file(&settings);
 
         // Check if the Tally struct is created with default values
         assert!(result.is_ok());
@@ -339,7 +400,7 @@ mod tests {
             pam_hook: String::from("test"),
         };
 
-        let tally = Tally::open(&settings).unwrap();
+        let tally = Tally::new_from_tally_file(&settings).unwrap();
 
         // Check if the values are updated on AUTHFAIL
         assert_eq!(tally.failures_count, 3); // Assuming you increment the count
@@ -378,7 +439,7 @@ mod tests {
             pam_hook: String::from("test"),
         };
 
-        let _tally = Tally::open(&settings).unwrap();
+        let _tally = Tally::new_from_tally_file(&settings).unwrap();
 
         // Expect tally count to decrease
         let ini_content = fs::read_to_string(&tally_file_path).unwrap();

@@ -65,13 +65,9 @@ Edit the values in the `.env` file to a user on your system. The test will build
 cargo xtask pam-test
 ```
 ### Linting
-Run linter:
-```console
-cargo xtask lint
-```
 fix:
 ```console
-cargo xtask tidy
+cargo xtask fix
 ```
 ### Pull Requests
 
