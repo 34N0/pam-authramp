@@ -29,11 +29,12 @@
 //! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::Actions;
-use ini::Ini;
 use pam::constants::{PamFlag, PamResultCode};
 use std::collections::HashMap;
 use std::ffi::CStr;
+use std::fs;
 use std::path::PathBuf;
+
 use users::User;
 
 const DEFAULT_TALLY_DIR: &str = "/var/run/authramp";
@@ -161,25 +162,38 @@ impl Settings {
     /// A `Settings` instance populated with values from the configuration file, or the
     /// default values if the file is not present or cannot be loaded.
     fn load_conf_file(config_file: Option<PathBuf>) -> Settings {
-        Ini::load_from_file(config_file.unwrap_or(PathBuf::from(DEFAULT_CONFIG_FILE_PATH)))
-            .ok()
-            .and_then(|ini| ini.section(Some("Settings")).cloned())
-            .map(|settings| Settings {
-                tally_dir: settings
+        // Read TOML file using the toml crate
+        let content =
+            fs::read_to_string(config_file.unwrap_or(PathBuf::from(DEFAULT_CONFIG_FILE_PATH))).ok();
+
+        // Parse TOML content into a TomlTable
+        let toml_table: Option<toml::value::Table> =
+            content.and_then(|c| toml::de::from_str(&c).ok());
+
+        // Extract the "Settings" section from the TOML table
+        let settings = toml_table.and_then(|t| t.get("Settings").cloned());
+
+        // Map the settings to the Settings struct
+        settings
+            .map(|s| Settings {
+                tally_dir: s
                     .get("tally_dir")
-                    .map(PathBuf::from)
+                    .and_then(|val| val.as_str().map(PathBuf::from))
                     .unwrap_or_default(),
-                free_tries: settings
+                free_tries: s
                     .get("free_tries")
-                    .and_then(|val| val.parse().ok())
+                    .and_then(|val| val.as_integer())
+                    .map(|val| val as i32)
                     .unwrap_or_default(),
-                base_delay_seconds: settings
-                    .get("base_delay")
-                    .and_then(|val| val.parse().ok())
+                base_delay_seconds: s
+                    .get("base_delay_seconds")
+                    .and_then(|val| val.as_integer())
+                    .map(|val| val as i32)
                     .unwrap_or_default(),
-                ramp_multiplier: settings
+                ramp_multiplier: s
                     .get("ramp_multiplier")
-                    .and_then(|val| val.parse().ok())
+                    .and_then(|val| val.as_float())
+                    .map(|val| val as i32)
                     .unwrap_or_default(),
                 ..Settings::default()
             })
@@ -207,30 +221,34 @@ mod tests {
     }
 
     #[test]
-    fn test_build_settings_from_ini() {
-        let temp_dir = TempDir::new("test_build_settings_from_ini").unwrap();
-        let ini_file_path = temp_dir.path().join("config.conf");
+    fn test_build_settings_from_toml() {
+        let temp_dir = TempDir::new("test_build_settings_from_toml").unwrap();
+        let conf_file_path = temp_dir.path().join("config.conf");
 
-        let mut i = Ini::new();
-        i.with_section(Some("Settings"))
-            .set("tally_dir", "/tmp/tally_dir")
-            .set("free_tries", "10")
-            .set("base_delay", "15")
-            .set("ramp_multiplier", "20");
+        // Create a TOML file with settings
+        let toml_content = r#"
+        [Settings]
+        tally_dir = "/tmp/tally_dir"
+        free_tries = 10
+        base_delay_seconds = 15
+        ramp_multiplier = 20.0
+    "#;
+        std::fs::write(&conf_file_path, toml_content).unwrap();
 
-        i.write_to_file(&ini_file_path).unwrap();
-
+        // Create PAM arguments
         let args = [CStr::from_bytes_with_nul("preauth\0".as_bytes()).unwrap()].to_vec();
         let flags: PamFlag = 0;
 
+        // Build settings from TOML
         let result = Settings::build(
             Some(User::new(9999, "test_user", 9999)),
             args,
             flags,
-            Some(ini_file_path),
+            Some(conf_file_path.clone()),
             "test",
         );
 
+        // Validate the result
         assert!(result.is_ok());
         let settings = result.unwrap();
         assert_eq!(settings.tally_dir, PathBuf::from("/tmp/tally_dir"));

@@ -43,7 +43,6 @@ use std::{
 
 use crate::{settings::Settings, syslog_error, syslog_info, Actions};
 use chrono::{DateTime, Duration, Utc};
-use ini::Ini;
 use pam::constants::PamResultCode;
 use users::User;
 
@@ -132,44 +131,43 @@ impl Tally {
         tally_file: &Path,
         settings: &Settings,
     ) -> Result<(), PamResultCode> {
-        Ini::load_from_file(tally_file)
-            .map_err(|e| {
-                syslog_error!("PAM_SYSTEM_ERR: Error reading tally file: {}", e);
-                PamResultCode::PAM_SYSTEM_ERR
-            })
-            .and_then(|i| {
-                // If the "Fails" section exists, extract and set values
-                if let Some(fails_section) = i.section(Some("Fails")) {
-                    Some(fails_section)
-    .map(|section| {
+        toml::from_str::<toml::Value>(&std::fs::read_to_string(tally_file).map_err(|e| {
+            syslog_error!("PAM_SYSTEM_ERR: Error reading tally file: {}", e);
+            PamResultCode::PAM_SYSTEM_ERR
+        })?)
+        .map_err(|e| {
+            syslog_error!("PAM_SYSTEM_ERR: Error parsing tally file: {}", e);
+            PamResultCode::PAM_SYSTEM_ERR
+        })
+        .and_then(|value| {
+            // Extract values from the "Fails" table
+            if let Some(fails_table) = value.get("Fails").and_then(|v| v.as_table()) {
+                tally.failures_count = fails_table
+                    .get("count")
+                    .and_then(|count| count.as_integer())
+                    .map(|count| count as i32)
+                    .unwrap_or_default();
 
-        tally.failures_count = section.get("count")
-        .map(|count| count.parse())
-        .transpose()
-        .map_err(|_e| { PamResultCode::PAM_SYSTEM_ERR })?
-        .unwrap_or_default();
+                tally.failure_instant = fails_table
+                    .get("instant")
+                    .and_then(|instant| instant.as_str())
+                    .and_then(|instant| instant.parse().ok())
+                    .unwrap_or_default();
 
-        tally.failure_instant = section.get("instant")
-        .map(|instant| instant.parse())
-        .transpose().map_err(|_e| { PamResultCode::PAM_SYSTEM_ERR })?
-        .unwrap_or_default();
+                tally.unlock_instant = fails_table
+                    .get("unlock_instant")
+                    .and_then(|unlock_instant| unlock_instant.as_str())
+                    .and_then(|unlock_instant| unlock_instant.parse().ok());
+            } else {
+                // If the "Fails" table doesn't exist, return an error
+                syslog_error!(
+                    "PAM_SYSTEM_ERR: Error reading tally file: [Fails] table does not exist"
+                );
+                return Err(PamResultCode::PAM_SYSTEM_ERR);
+            }
 
-        tally.unlock_instant = section.get("unlock_instant")
-        .map(|unlock_instant| unlock_instant.parse())
-        .transpose()
-        .map_err(|_e| { PamResultCode::PAM_SYSTEM_ERR })?;
-
-        Ok(())
-    })
-    .transpose()?;
-                } else {
-                    // If the section doesn't exist, return an error
-                    syslog_error!("PAM_SYSTEM_ERR: Error reading tally file: [SETTINGS] section does not exist");
-                    return Err(PamResultCode::PAM_SYSTEM_ERR);
-                }
-
-                Self::update_tally_from_section(tally, user, tally_file, settings)
-            })
+            Self::update_tally_from_section(tally, user, tally_file, settings)
+        })
     }
 
     /// Updates tally information based on a section from the tally file.
@@ -193,27 +191,27 @@ impl Tally {
     ) -> Result<(), PamResultCode> {
         // Handle specific actions based on settings.action
         match settings.get_action()? {
-            Actions::PREAUTH => return Ok(()),
+            Actions::PREAUTH => Ok(()),
             Actions::AUTHSUCC => {
                 // total failures for logging
                 let total_failures = tally.failures_count;
-
+    
                 // If action is AUTHFAIL, update count
                 tally.failures_count = 0;
-
+    
                 // Reset unlock_instant to None on AUTHSUCC
                 tally.unlock_instant = None;
-
+    
                 // Write the updated values back to the file
-                let mut i = Ini::new();
-                i.with_section(Some("Fails"))
-                    .set("count", tally.failures_count.to_string());
-
-                i.write_to_file(tally_file).map_err(|e| {
-                    syslog_error!("PAM_SYSTEM_ERR: Error reseting tally: {}", e);
+                let toml_str = format!(
+                    "[Fails]\ncount = {}",
+                    tally.failures_count
+                );
+                std::fs::write(tally_file, toml_str).map_err(|e| {
+                    syslog_error!("PAM_SYSTEM_ERR: Error resetting tally: {}", e);
                     PamResultCode::PAM_SYSTEM_ERR
                 })?;
-
+    
                 // log account unlock
                 if total_failures > 0 {
                     syslog_info!(
@@ -222,47 +220,47 @@ impl Tally {
                         user.name()
                     );
                 }
+                Ok(())
             }
             Actions::AUTHFAIL => {
                 // If action is AUTHFAIL, update count and instant
                 tally.failures_count += 1;
                 tally.failure_instant = Utc::now();
-
+    
                 let mut delay = tally.get_delay(settings);
-
+    
                 // Cap unlock_instant at 24 hours from now
                 if delay > Duration::hours(24) {
-                    delay = Duration::hours(24)
+                    delay = Duration::hours(24);
                 }
-
+    
                 tally.unlock_instant = Some(tally.failure_instant + delay);
-
+    
                 // Write the updated values back to the file
-                let mut i = Ini::new();
-                i.with_section(Some("Fails"))
-                    .set("count", tally.failures_count.to_string())
-                    .set("instant", tally.failure_instant.to_string())
-                    .set("unlock_instant", tally.unlock_instant.unwrap().to_string());
-
-                i.write_to_file(tally_file).map_err(|e| {
+                let toml_str = format!(
+                    "[Fails]\ncount = {}\ninstant = \"{}\"\nunlock_instant = \"{}\"",
+                    tally.failures_count,
+                    tally.failure_instant,
+                    tally.unlock_instant.unwrap()
+                );
+                std::fs::write(tally_file, toml_str).map_err(|e| {
                     syslog_error!("PAM_SYSTEM_ERR: Error writing tally file: {}", e);
                     PamResultCode::PAM_SYSTEM_ERR
                 })?;
-
+    
                 if tally.failures_count > settings.free_tries {
                     // log account unlock
-
                     syslog_info!(
-                    "PAM_AUTH_ERR: Added tally ({} failures) for the {:?} account. Account is locked until {}.",
-                    tally.failures_count,
-                    user.name(),
-                    tally.unlock_instant.unwrap()
-                );
+                        "PAM_AUTH_ERR: Added tally ({} failures) for the {:?} account. Account is locked until {}.",
+                        tally.failures_count,
+                        user.name(),
+                        tally.unlock_instant.unwrap()
+                    );
                 }
+                Ok(())
             }
         }
-        Ok(())
-    }
+    }    
 
     /// Creates a new tally file with default values.
     ///
@@ -282,20 +280,20 @@ impl Tally {
             syslog_error!("PAM_SYSTEM_ERR: Error creating tally file: {}", e);
             PamResultCode::PAM_SYSTEM_ERR
         })?;
-
-        let mut ini = Ini::new();
-        ini.with_section(Some("Fails"))
-            .set("count", tally.failures_count.to_string())
-            .set("instant", tally.failure_instant.to_string());
-
-        // Write the INI file to disk
-        ini.write_to_file(tally_file).map_err(|e| {
+    
+        let toml_str = format!(
+            "[Fails]\ncount = {}\ninstant = \"{}\"",
+            tally.failures_count, tally.failure_instant
+        );
+    
+        // Write the TOML string to disk
+        std::fs::write(tally_file, toml_str).map_err(|e| {
             syslog_error!("PAM_SYSTEM_ERR: Error writing tally file: {}", e);
             PamResultCode::PAM_SYSTEM_ERR
         })?;
-
+    
         Ok(())
-    }
+    }    
 }
 
 // Unit Tests
@@ -312,16 +310,16 @@ mod tests {
         let temp_dir = TempDir::new("test_open_existing_tally_file").unwrap();
         let tally_file_path = temp_dir.path().join("test_user_a");
 
-        // Create an existing INI file
-        let mut i = Ini::new();
-        i.with_section(Some("Fails"))
-            .set("count", "42")
-            .set("instant", "2023-01-01T00:00:00Z")
-            .set("unlock_instant", "2023-01-02T00:00:00Z");
+        // Create an existing TOML file
+        let toml_str = r#"
+            [Fails]
+            count = 42
+            instant = "2023-01-01T00:00:00Z"
+            unlock_instant = "2023-01-02T00:00:00Z"
+        "#;
+        std::fs::write(&tally_file_path, toml_str).unwrap();
 
-        i.write_to_file(tally_file_path).unwrap();
-
-        // Create settings and call open
+        // Create settings and call new_from_tally_file
         let settings = Settings {
             user: Some(User::new(9999, "test_user_a", 9999)),
             tally_dir: temp_dir.path().to_path_buf(),
@@ -368,11 +366,12 @@ mod tests {
         assert_eq!(tally.failures_count, 0);
         assert!(tally.unlock_instant.is_none());
 
-        // Check if the INI file has been created with default values
-        let ini_content = fs::read_to_string(tally_file_path).unwrap();
-        assert!(ini_content.contains("[Fails]"));
-        assert!(ini_content.contains("count=0"));
-        assert!(!ini_content.contains("unlock_instant="));
+        // Check if the TOML file has been created with default values
+        let toml_content = fs::read_to_string(tally_file_path).unwrap();
+        println!("{}", &toml_content);
+        assert!(toml_content.contains("[Fails]"));
+        assert!(toml_content.contains("count = 0"));
+        assert!(!toml_content.contains("unlock_instant = "));
     }
 
     #[test]
@@ -381,15 +380,16 @@ mod tests {
         let temp_dir = TempDir::new("test_open_auth_fail_updates_values").unwrap();
         let tally_file_path = temp_dir.path().join("test_user_c");
 
-        // Create an existing INI file with some initial values
-        let mut i = Ini::new();
-        i.with_section(Some("Fails"))
-            .set("count", "2")
-            .set("instant", "2023-01-01T00:00:00Z")
-            .set("unlock_instant", "2023-01-02T00:00:00Z");
-        i.write_to_file(&tally_file_path).unwrap();
+        // Create an existing TOML file with some initial values
+        let toml_str = r#"
+        [Fails]
+        count = 2
+        instant = "2023-01-01T00:00:00Z"
+        unlock_instant = "2023-01-02T00:00:00Z"
+    "#;
+        std::fs::write(&tally_file_path, toml_str).unwrap();
 
-        // Create settings and call open with AUTHFAIL action
+        // Create settings and call new_from_tally_file with AUTHFAIL action
         let settings = Settings {
             user: Some(User::new(9999, "test_user_c", 9999)),
             tally_dir: temp_dir.path().to_path_buf(),
@@ -407,9 +407,9 @@ mod tests {
                                              // Also, assert that the instant is updated to the current time
         assert!(tally.unlock_instant.is_some());
         // Optionally, you can assert that the file is updated
-        let ini_content = fs::read_to_string(&tally_file_path).unwrap();
-        assert!(ini_content.contains("count=3"));
-        // Also, assert the instant and unlock_instant values in the INI file
+        let toml_content = fs::read_to_string(&tally_file_path).unwrap();
+        assert!(toml_content.contains("count = 3"));
+        // Also, assert the instant and unlock_instant values in the TOML file
 
         // Additional assertions as needed
     }
@@ -420,15 +420,16 @@ mod tests {
         let temp_dir = TempDir::new("test_open_auth_succ_deletes_file").unwrap();
         let tally_file_path = temp_dir.path().join("test_user_d");
 
-        // Create an existing INI file
-        let mut i = Ini::new();
-        i.with_section(Some("Fails"))
-            .set("count", "2")
-            .set("instant", "2023-01-01T00:00:00Z")
-            .set("unlock_instant", "2023-01-02T00:00:00Z");
-        i.write_to_file(&tally_file_path).unwrap();
+        // Create an existing TOML file
+        let toml_str = r#"
+        [Fails]
+        count = 2
+        instant = "2023-01-01T00:00:00Z"
+        unlock_instant = "2023-01-02T00:00:00Z"
+    "#;
+        std::fs::write(&tally_file_path, toml_str).unwrap();
 
-        // Create settings and call open with AUTHSUCC action
+        // Create settings and call new_from_tally_file with AUTHSUCC action
         let settings = Settings {
             user: Some(User::new(9999, "test_user_d", 9999)),
             tally_dir: temp_dir.path().to_path_buf(),
@@ -441,9 +442,12 @@ mod tests {
 
         let _tally = Tally::new_from_tally_file(&settings).unwrap();
 
-        // Expect tally count to decrease
-        let ini_content = fs::read_to_string(&tally_file_path).unwrap();
-        assert!(ini_content.contains("count=0"), "Expected tally count = 0");
-        assert!(!ini_content.contains("unlock_instant="));
+        // Expect tally count to reset
+        let toml_content = fs::read_to_string(&tally_file_path).unwrap();
+        assert!(
+            toml_content.contains("count = 0"),
+            "Expected tally count = 0"
+        );
+        assert!(!toml_content.contains("unlock_instant = "));
     }
 }

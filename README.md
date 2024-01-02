@@ -29,27 +29,27 @@ account     required                                     libpam_authramp.so
 ## Configuration
 ### authramp.conf
 Create a configuration file under /etc/security/authramp.conf. This is an example configuration:
-```ini
-; AuthRamp Configuration File
-; This file configures the behavior of the AuthRamp PAM module.
-
+```conf
+# AuthRamp Configuration File
+# This file configures the behavior of the AuthRamp PAM module.
+#
 [Settings]
-; Directory where tally information is stored.
-; Each user has a separate file in this directory to track authentication failures.
-tally_dir = /var/run/authramp
-
-; Number of allowed free authentication attempts before applying delays.
-; During these free tries, the module allows authentication without introducing delays.
-free_tries = 6
-
-; Base delay applied to each authentication failure.
-; This is the initial delay applied after the free tries are exhausted.
-base_delay_seconds = 30
-
-; Multiplier for the delay calculation based on the number of failures.
-; The delay for each subsequent failure is calculated as follows:
-; delay = ramp_multiplier * (fails - free_tries) * ln(fails - free_tries) + base_delay_seconds
-ramp_multiplier = 50
+# Directory where tally information is stored.
+# Each user has a separate file in this directory to track authentication failures.
+# tally_dir = /var/run/authramp
+#
+# Number of allowed free authentication attempts before applying delays.
+# During these free tries, the module allows authentication without introducing delays.
+# free_tries = 6
+#
+# Base delay applied to each authentication failure.
+# This is the initial delay applied after the free tries are exhausted.
+# base_delay_seconds = 30
+#
+# Multiplier for the delay calculation based on the number of failures.
+# The delay for each subsequent failure is calculated as follows:
+# delay = ramp_multiplier * (fails - free_tries) * ln(fails - free_tries) + base_delay_seconds
+# ramp_multiplier = 50
 ```
 ### default delay
 The default configuration of this module is very restrictive. The standard delays are:
