@@ -117,7 +117,7 @@ mod test_pam_auth {
 
             // Expect tally count
             let ini_content = fs::read_to_string(tally_file_path).unwrap();
-            assert!(ini_content.contains(&format!("count={}", total_tries)));
+            assert!(ini_content.contains(&format!("count = {}", total_tries)));
         })
     }
 
@@ -137,7 +137,7 @@ mod test_pam_auth {
             // Expect tally count to increase
             let ini_content = fs::read_to_string(&tally_file_path).unwrap();
             assert!(
-                ini_content.contains("count=1"),
+                ini_content.contains("count = 1"),
                 "Expected tally count to increase"
             );
 
@@ -152,7 +152,7 @@ mod test_pam_auth {
 
             // Expect tally count to decrease
             let ini_content = fs::read_to_string(&tally_file_path).unwrap();
-            assert!(ini_content.contains("count=0"), "Expected tally count = 0");
+            assert!(ini_content.contains("count = 0"), "Expected tally count = 0");
         });
     }
 
@@ -204,12 +204,13 @@ mod test_pam_auth {
             // Set the custom tally_dir path in authramp.conf
             let config_content = format!(
                 "[Settings]\n\
-                tally_dir = {}\n\
+                tally_dir = \"{}\"\n\
                 free_tries = 6\n\
                 base_delay_seconds = 30\n\
                 ramp_multiplier = 50\n",
                 custom_tally_dir.path().display()
             );
+            println!("{}", &config_content);
             let config_path = "/etc/security/authramp.conf";
             fs::write(config_path, config_content).expect("Unable to write to authramp.conf");
 
@@ -221,6 +222,7 @@ mod test_pam_auth {
 
             // Check if the tally file is created in the custom tally_dir path
             let tally_file_path = custom_tally_dir.path().join(user_name);
+            println!("{:?}", &tally_file_path);
             assert!(
                 Path::exists(&tally_file_path),
                 "Tally file not created in custom tally_dir"

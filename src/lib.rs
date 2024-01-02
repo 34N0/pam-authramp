@@ -52,7 +52,6 @@ mod tally;
 mod utils;
 
 extern crate chrono;
-extern crate ini;
 extern crate once_cell;
 extern crate pam;
 extern crate tempdir;
@@ -198,18 +197,29 @@ fn format_remaining_time(remaining_time: Duration) -> String {
 
     fn append_unit(value: i64, unit: &str, formatted_time: &mut String) {
         if value > 0 {
-            let unit_str = if value == 1 { unit.trim_end_matches('s') } else { unit };
+            let unit_str = if value == 1 {
+                unit.trim_end_matches('s')
+            } else {
+                unit
+            };
             formatted_time.push_str(&format!("{} {} ", value, unit_str));
         }
     }
 
     append_unit(remaining_time.num_hours(), "hour", &mut formatted_time);
-    append_unit(remaining_time.num_minutes() % 60, "minute", &mut formatted_time);
-    append_unit(remaining_time.num_seconds() % 60, "second", &mut formatted_time);
+    append_unit(
+        remaining_time.num_minutes() % 60,
+        "minute",
+        &mut formatted_time,
+    );
+    append_unit(
+        remaining_time.num_seconds() % 60,
+        "second",
+        &mut formatted_time,
+    );
 
     formatted_time
 }
-
 
 /// Handles the account lockout mechanism based on the number of failures and settings.
 /// If the account is locked, it sends periodic messages to the user until the account is unlocked.
