@@ -57,6 +57,8 @@ pub struct Settings {
     pub action: Option<Actions>,
     // PAM user
     pub user: Option<User>,
+    // Even lock out root user
+    pub even_deny_root: bool,
 }
 
 impl Default for Settings {
@@ -70,6 +72,7 @@ impl Default for Settings {
             base_delay_seconds: 30,
             ramp_multiplier: 50,
             pam_hook: String::from("auth"),
+            even_deny_root: false,
         }
     }
 }
@@ -195,6 +198,10 @@ impl Settings {
                     .and_then(|val| val.as_float())
                     .map(|val| val as i32)
                     .unwrap_or_default(),
+                even_deny_root: s
+                    .get("even_deny_root")
+                    .and_then(|val| val.as_bool())
+                    .unwrap_or_default(),
                 ..Settings::default()
             })
             .unwrap_or_default()
@@ -218,6 +225,7 @@ mod tests {
         assert_eq!(default_settings.free_tries, 6);
         assert_eq!(default_settings.base_delay_seconds, 30);
         assert_eq!(default_settings.ramp_multiplier, 50);
+        assert_eq!(default_settings.even_deny_root, false);
     }
 
     #[test]
@@ -232,6 +240,7 @@ mod tests {
         free_tries = 10
         base_delay_seconds = 15
         ramp_multiplier = 20.0
+        even_deny_root = true
     "#;
         std::fs::write(&conf_file_path, toml_content).unwrap();
 
@@ -258,6 +267,7 @@ mod tests {
         assert_eq!(settings.free_tries, 10);
         assert_eq!(settings.base_delay_seconds, 15);
         assert_eq!(settings.ramp_multiplier, 20);
+        assert_eq!(settings.even_deny_root, true);
     }
 
     #[test]
