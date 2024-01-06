@@ -182,26 +182,26 @@ impl Settings {
                 tally_dir: s
                     .get("tally_dir")
                     .and_then(|val| val.as_str().map(PathBuf::from))
-                    .unwrap_or_default(),
+                    .unwrap_or_else(|| Settings::default().tally_dir),
                 free_tries: s
                     .get("free_tries")
                     .and_then(|val| val.as_integer())
                     .map(|val| val as i32)
-                    .unwrap_or_default(),
+                    .unwrap_or_else(|| Settings::default().free_tries),
                 base_delay_seconds: s
                     .get("base_delay_seconds")
                     .and_then(|val| val.as_integer())
                     .map(|val| val as i32)
-                    .unwrap_or_default(),
+                    .unwrap_or_else(|| Settings::default().base_delay_seconds),
                 ramp_multiplier: s
                     .get("ramp_multiplier")
                     .and_then(|val| val.as_float())
                     .map(|val| val as i32)
-                    .unwrap_or_default(),
+                    .unwrap_or_else(|| Settings::default().ramp_multiplier),
                 even_deny_root: s
                     .get("even_deny_root")
                     .and_then(|val| val.as_bool())
-                    .unwrap_or_default(),
+                    .unwrap_or_else(|| Settings::default().even_deny_root),
                 ..Settings::default()
             })
             .unwrap_or_default()
@@ -260,8 +260,8 @@ mod tests {
         // Validate the result
         assert!(result.is_ok());
         let settings = result.unwrap();
-        assert_eq!(settings.tally_dir, PathBuf::from("/tmp/tally_dir"));
         assert_eq!(settings.action, Some(Actions::PREAUTH));
+        assert_eq!(settings.tally_dir, PathBuf::from("/tmp/tally_dir"));
         assert!(settings.user.is_some());
         assert_eq!(settings.user.unwrap().name(), "test_user");
         assert_eq!(settings.free_tries, 10);
@@ -282,6 +282,47 @@ mod tests {
             "test",
         );
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_build_settings_from_toml_commented_out() {
+        let temp_dir = TempDir::new("test_build_settings_from_toml").unwrap();
+        let conf_file_path = temp_dir.path().join("config.conf");
+
+        // Create a TOML file with settings
+        let toml_content = r#"
+        [Settings]
+        # tally_dir = "/tmp/tally_dir"
+        # free_tries = 10
+        # base_delay_seconds = 15
+        # ramp_multiplier = 20.0
+        # even_deny_root = true
+    "#;
+        std::fs::write(&conf_file_path, toml_content).unwrap();
+
+        // Create PAM arguments
+        let args = [CStr::from_bytes_with_nul("preauth\0".as_bytes()).unwrap()].to_vec();
+        let flags: PamFlag = 0;
+
+        // Build settings from TOML
+        let result = Settings::build(
+            Some(User::new(9999, "test_user", 9999)),
+            args,
+            flags,
+            Some(conf_file_path.clone()),
+            "test",
+        );
+
+        // Validate the result
+        assert!(result.is_ok());
+        let settings = result.unwrap();
+        println!("{:?}", settings);
+        assert_eq!(settings.action, Some(Actions::PREAUTH));
+        assert_eq!(settings.tally_dir, PathBuf::from(DEFAULT_TALLY_DIR));
+        assert_eq!(settings.free_tries, 6);
+        assert_eq!(settings.base_delay_seconds, 30);
+        assert_eq!(settings.ramp_multiplier, 50);
+        assert_eq!(settings.even_deny_root, false);
     }
 
     #[test]
