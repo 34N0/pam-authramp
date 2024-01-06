@@ -50,6 +50,11 @@ Create a configuration file under /etc/security/authramp.conf. This is an exampl
 # The delay for each subsequent failure is calculated as follows:
 # delay = ramp_multiplier * (fails - free_tries) * ln(fails - free_tries) + base_delay_seconds
 # ramp_multiplier = 50
+#
+# Even lock out the root user. Enabling this can be dangerous and may result in a total system lockout.
+# For auditing purposes, the tally will still be created for the root user, even if this setting is disabled.
+# If you plan to enable this feature, make sure there isn't any tally stored under <tally_dir>/root, or you risk immediate lockout.
+# even_deny_root = false
 ```
 ### default delay
 The default configuration of this module is very restrictive. The standard delays are:

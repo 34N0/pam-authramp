@@ -232,6 +232,17 @@ fn format_remaining_time(remaining_time: Duration) -> String {
 /// # Returns
 /// PAM_SUCCESS if the account is successfully unlocked, PAM_AUTH_ERR otherwise
 fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamResultCode {
+    // get user
+    let user = match settings.get_user() {
+        Ok(user) => user,
+        Err(res) => return res,
+    };
+
+    // ignore root except when configured
+    if user.uid().eq(&0) && !settings.even_deny_root {
+        return PamResultCode::PAM_SUCCESS
+    } 
+
     if tally.failures_count > settings.free_tries {
         if let Ok(Some(conv)) = pamh.get_item::<Conv>() {
             let delay = tally.get_delay(settings);
@@ -243,7 +254,7 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
 
             syslog_info!(
                 "PAM_AUTH_ERR: Account {:?} is getting bounced. Account still locked until {}",
-                settings.get_user(),
+                user,
                 unlock_instant,
             );
 

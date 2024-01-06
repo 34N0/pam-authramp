@@ -398,6 +398,7 @@ mod tests {
             ramp_multiplier: 50,
             base_delay_seconds: 30,
             pam_hook: String::from("test"),
+            even_deny_root: false,
         };
 
         let tally = Tally::new_from_tally_file(&settings).unwrap();
@@ -438,6 +439,7 @@ mod tests {
             ramp_multiplier: 50,
             base_delay_seconds: 30,
             pam_hook: String::from("test"),
+            even_deny_root: false
         };
 
         let _tally = Tally::new_from_tally_file(&settings).unwrap();
