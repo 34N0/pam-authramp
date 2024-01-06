@@ -209,12 +209,12 @@ fn format_remaining_time(remaining_time: Duration) -> String {
     append_unit(remaining_time.num_hours(), "hour", &mut formatted_time);
     append_unit(
         remaining_time.num_minutes() % 60,
-        "minute",
+        "minutes",
         &mut formatted_time,
     );
     append_unit(
         remaining_time.num_seconds() % 60,
-        "second",
+        "seconds",
         &mut formatted_time,
     );
 
