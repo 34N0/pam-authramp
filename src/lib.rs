@@ -240,8 +240,8 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
 
     // ignore root except when configured
     if user.uid().eq(&0) && !settings.even_deny_root {
-        return PamResultCode::PAM_SUCCESS
-    } 
+        return PamResultCode::PAM_SUCCESS;
+    }
 
     if tally.failures_count > settings.free_tries {
         if let Ok(Some(conv)) = pamh.get_item::<Conv>() {

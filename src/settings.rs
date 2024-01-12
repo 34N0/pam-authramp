@@ -28,7 +28,7 @@
 //! You should have received a copy of the GNU General Public License
 //! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::Actions;
+use crate::{syslog_info, Actions};
 use pam::constants::{PamFlag, PamResultCode};
 use std::collections::HashMap;
 use std::ffi::CStr;
@@ -150,7 +150,10 @@ impl Settings {
     /// A `Result` containing a reference to the PAM user (`&User`) if available, or a `PamResultCode`
     /// indicating a user_unknown error if the user is not present.
     pub fn get_user(&self) -> Result<&User, PamResultCode> {
-        self.user.as_ref().ok_or(PamResultCode::PAM_USER_UNKNOWN)
+        self.user.as_ref().ok_or_else(|| {
+            syslog_info!("PAM_USER_UNKNOWN: Authentication failed because user is unknown",);
+            PamResultCode::PAM_USER_UNKNOWN
+        })
     }
 
     /// Loads configuration settings from an INI file, returning a `Settings` instance.
@@ -225,7 +228,7 @@ mod tests {
         assert_eq!(default_settings.free_tries, 6);
         assert_eq!(default_settings.base_delay_seconds, 30);
         assert_eq!(default_settings.ramp_multiplier, 50);
-        assert_eq!(default_settings.even_deny_root, false);
+        assert!(!default_settings.even_deny_root);
     }
 
     #[test]
@@ -267,7 +270,7 @@ mod tests {
         assert_eq!(settings.free_tries, 10);
         assert_eq!(settings.base_delay_seconds, 15);
         assert_eq!(settings.ramp_multiplier, 20);
-        assert_eq!(settings.even_deny_root, true);
+        assert!(settings.even_deny_root);
     }
 
     #[test]
@@ -322,7 +325,7 @@ mod tests {
         assert_eq!(settings.free_tries, 6);
         assert_eq!(settings.base_delay_seconds, 30);
         assert_eq!(settings.ramp_multiplier, 50);
-        assert_eq!(settings.even_deny_root, false);
+        assert!(!settings.even_deny_root);
     }
 
     #[test]

@@ -152,7 +152,10 @@ mod test_pam_auth {
 
             // Expect tally count to decrease
             let ini_content = fs::read_to_string(&tally_file_path).unwrap();
-            assert!(ini_content.contains("count = 0"), "Expected tally count = 0");
+            assert!(
+                ini_content.contains("count = 0"),
+                "Expected tally count = 0"
+            );
         });
     }
 
