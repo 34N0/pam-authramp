@@ -76,6 +76,7 @@ cargo xtask fix
 A good pull request should be ready for review before it is even created. For all pull requests, ensure:
 
 - Your changes are in a single commit
+- Your changes passes all the checks
 - You have no unnecessary changes, including and especially whitespace changes
 - You're code is covered.
 - For substantive changes, you include evidence of proper functionality in the pull request in addition to the build results.
