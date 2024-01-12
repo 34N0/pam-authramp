@@ -195,23 +195,20 @@ impl Tally {
             Actions::AUTHSUCC => {
                 // total failures for logging
                 let total_failures = tally.failures_count;
-    
+
                 // If action is AUTHFAIL, update count
                 tally.failures_count = 0;
-    
+
                 // Reset unlock_instant to None on AUTHSUCC
                 tally.unlock_instant = None;
-    
+
                 // Write the updated values back to the file
-                let toml_str = format!(
-                    "[Fails]\ncount = {}",
-                    tally.failures_count
-                );
+                let toml_str = format!("[Fails]\ncount = {}", tally.failures_count);
                 std::fs::write(tally_file, toml_str).map_err(|e| {
                     syslog_error!("PAM_SYSTEM_ERR: Error resetting tally: {}", e);
                     PamResultCode::PAM_SYSTEM_ERR
                 })?;
-    
+
                 // log account unlock
                 if total_failures > 0 {
                     syslog_info!(
@@ -226,16 +223,16 @@ impl Tally {
                 // If action is AUTHFAIL, update count and instant
                 tally.failures_count += 1;
                 tally.failure_instant = Utc::now();
-    
+
                 let mut delay = tally.get_delay(settings);
-    
+
                 // Cap unlock_instant at 24 hours from now
                 if delay > Duration::hours(24) {
                     delay = Duration::hours(24);
                 }
-    
+
                 tally.unlock_instant = Some(tally.failure_instant + delay);
-    
+
                 // Write the updated values back to the file
                 let toml_str = format!(
                     "[Fails]\ncount = {}\ninstant = \"{}\"\nunlock_instant = \"{}\"",
@@ -247,7 +244,7 @@ impl Tally {
                     syslog_error!("PAM_SYSTEM_ERR: Error writing tally file: {}", e);
                     PamResultCode::PAM_SYSTEM_ERR
                 })?;
-    
+
                 if tally.failures_count > settings.free_tries {
                     // log account unlock
                     syslog_info!(
@@ -260,7 +257,7 @@ impl Tally {
                 Ok(())
             }
         }
-    }    
+    }
 
     /// Creates a new tally file with default values.
     ///
@@ -280,20 +277,20 @@ impl Tally {
             syslog_error!("PAM_SYSTEM_ERR: Error creating tally file: {}", e);
             PamResultCode::PAM_SYSTEM_ERR
         })?;
-    
+
         let toml_str = format!(
             "[Fails]\ncount = {}\ninstant = \"{}\"",
             tally.failures_count, tally.failure_instant
         );
-    
+
         // Write the TOML string to disk
         std::fs::write(tally_file, toml_str).map_err(|e| {
             syslog_error!("PAM_SYSTEM_ERR: Error writing tally file: {}", e);
             PamResultCode::PAM_SYSTEM_ERR
         })?;
-    
+
         Ok(())
-    }    
+    }
 }
 
 // Unit Tests
@@ -317,7 +314,7 @@ mod tests {
             instant = "2023-01-01T00:00:00Z"
             unlock_instant = "2023-01-02T00:00:00Z"
         "#;
-        std::fs::write(&tally_file_path, toml_str).unwrap();
+        std::fs::write(tally_file_path, toml_str).unwrap();
 
         // Create settings and call new_from_tally_file
         let settings = Settings {
@@ -439,7 +436,7 @@ mod tests {
             ramp_multiplier: 50,
             base_delay_seconds: 30,
             pam_hook: String::from("test"),
-            even_deny_root: false
+            even_deny_root: false,
         };
 
         let _tally = Tally::new_from_tally_file(&settings).unwrap();
