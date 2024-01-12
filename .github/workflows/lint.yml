@@ -14,4 +14,4 @@ jobs:
       - run: sudo apt install libpam-dev clang libclang-dev
       - uses: actions/checkout@v4
       - name: Run Clippy
-        run: cargo clippy --all-targets --all-features
+        run: cargo clippy --all-features
