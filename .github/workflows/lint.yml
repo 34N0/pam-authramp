@@ -1,5 +1,6 @@
 on:
   pull_request:
+  workflow_dispatch:
 name: Clippy check
 
 # Make sure CI fails on all warnings, including Clippy lints
