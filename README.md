@@ -7,8 +7,22 @@ The AuthRamp PAM (Pluggable Authentication Modules) module provides an account l
 4. [Contributing](#contributing)
 
 ## Installation
-1. Copy the `libpam_authramp.so` library to the default PAM library directory. The directory varies for different distributions. For example, in current Fedora versions, the path is `/lib64/security`.
-2. Add the module library calls to the PAM service stack in `/etc/pam.d`.
+### RPM
+If you're a RPM distribution user, then then pam-authramp can be installed using a binary .rpm file provided in each [release](https://github.com/34N0/pam-authramp/releases).
+```bash
+curl -LO https://github.com/34N0/pam-authramp/releases/download/v0.3.0-alpha/pam-authramp-0.3.0-1.x86_64.rpm
+sudo rpm -i pam-authramp-0.3.0-1.x86_64.rpm
+```
+### Debian
+If you're a Debian user (or a user of a Debian derivative like Ubuntu), then pam-authramp can be installed using a binary .deb file provided in each [release](https://github.com/34N0/pam-authramp/releases).
+```bash
+curl -LO https://github.com/34N0/pam-authramp/releases/download/v0.3.0-alpha/pam-authramp_0.3.0-1_amd64.deb
+sudo dpkg -i pam-authramp_0.3.0-1_amd64.deb
+```
+### Manually
+1. Download the latest [release](https://github.com/34N0/pam-authramp/releases).
+2. Copy the `libpam_authramp.so` library to the default PAM library directory. The directory varies for different distributions. For example, in current Fedora versions, the path is `/lib64/security`.
+3. Add the module library calls to the PAM service stack in `/etc/pam.d`.
 
 Add the preauth hook before the authentication module:
 ```conf
