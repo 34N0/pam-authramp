@@ -3,8 +3,8 @@ members = ["xtask"]
 
 [package]
 name = "pam-authramp"
-version = "0.1.0"
-description = "A PAM module for implementing ramping up delay on authentication failures."
+version = "0.3.0"
+description = "The AuthRamp PAM module provides an account lockout mechanism based on the number of authentication failures."
 authors = ["34n0 <34n0@immerda.ch>"]
 license = "GPL-3.0"
 publish = false
@@ -27,3 +27,18 @@ tempfile = "3.8.1"
 users = "0.11.0"
 log = "0.4"
 toml = "0.8.8"
+
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/libpam_authramp.so", dest = "/usr/lib64/security/libpam_authramp.so", mode = "755" },
+    { source = "example/system-auth/authramp.conf", dest = "/etc/security/authramp.conf", mode = "644" },
+]
+
+[package.metadata.deb]
+depends = "$auto"
+section = "utility"
+priority = "optional"
+assets = [
+    ["target/release/libpam_authramp.so", "usr/lib64/security/", "755"],
+    ["example/system-auth/authramp.conf", "/etc/security/authramp.conf", "644"],
+]
