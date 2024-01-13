@@ -24,7 +24,9 @@ sudo dpkg -i pam-authramp_0.3.0-1_amd64.deb
 2. Copy the `libpam_authramp.so` library to the default PAM library directory. The directory varies for different distributions. For example, in current Fedora versions, the path is `/lib64/security`.
 3. Add the module library calls to the PAM service stack in `/etc/pam.d`.
 
-Add the preauth hook before the authentication module:
+## Configuration
+### PAM service
+Edit the PAM service stacks in '/etc/pam.d'. Add the preauth hook before the authentication module:
 ```conf
 auth        required                                     libpam_authramp.so preauth
 ```
@@ -40,7 +42,6 @@ And finally add the module to the top of the account stack:
 ```conf
 account     required                                     libpam_authramp.so
 ```
-## Configuration
 ### authramp.conf
 Create a configuration file under /etc/security/authramp.conf. This is an example configuration:
 ```conf
