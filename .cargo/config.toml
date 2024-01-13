@@ -1,2 +1,4 @@
 [alias] 
+lint = 'run --package xtask fix --' 
+integration-test = 'run --package xtask pam-test --' 
 xtask = 'run --package xtask --'

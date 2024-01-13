@@ -51,12 +51,6 @@ mod settings;
 mod tally;
 mod utils;
 
-extern crate chrono;
-extern crate once_cell;
-extern crate pam;
-extern crate tempdir;
-extern crate users;
-
 use chrono::{Duration, Utc};
 use pam::constants::{PamFlag, PamResultCode, PAM_ERROR_MSG};
 use pam::conv::Conv;

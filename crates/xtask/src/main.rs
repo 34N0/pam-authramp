@@ -49,6 +49,8 @@ const RUNNER: &str = "
 runner = 'sudo -E'";
 
 const ALIAS: &str = "[alias] \n\
+lint = 'run --package xtask fix --' \n\
+integration-test = 'run --package xtask pam-test --' \n\
 xtask = 'run --package xtask --'";
 
 /// Sets specific Cargo configurations and executes a closure that performs additional tasks.

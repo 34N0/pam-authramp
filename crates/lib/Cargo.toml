@@ -1,0 +1,36 @@
+
+[package]
+name = "libpam-authramp"
+edition = "2021"
+
+[lib]
+name = "pam_authramp"
+crate-type = ["cdylib"]
+
+[dependencies]
+chrono = "0.4.31"
+pam-bindings = "0.1.1"
+sysinfo = "0.30.0"
+syslog = "6.1.0"
+users = "0.11.0"
+log = "0.4"
+toml = "0.8.8"
+
+[dev-dependencies]
+tempfile = "3.8.1"
+tempdir = "0.3.7"
+
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/libpam_authramp.so", dest = "/usr/lib64/security/libpam_authramp.so", mode = "755" },
+    { source = "example/system-auth/authramp.conf", dest = "/etc/security/authramp.conf", mode = "644" },
+]
+
+[package.metadata.deb]
+depends = "$auto"
+section = "utility"
+priority = "optional"
+assets = [
+    ["target/release/libpam_authramp.so", "usr/lib64/security/", "755"],
+    ["example/system-auth/authramp.conf", "/etc/security/authramp.conf", "644"],
+]
