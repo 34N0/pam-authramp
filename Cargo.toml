@@ -19,7 +19,6 @@ users = "0.11.0"
 log = "0.4"
 toml = "0.8.8"
 pam-client = "0.5.0"
-dotenv_codegen = "0.15.0"
 tempfile = "3.8.1"
 tempdir = "0.3.7"
 anyhow = "1.0.75"
@@ -27,7 +26,8 @@ cli-xtask = { version = "0.8.0", features = ["main", "lib-crate"] }
 xshell = "0.2.5"
 
 [workspace.lints.clippy]
-pedantic = { level = "warn" }
+pedantic = { level = "deny" }
+cast_possible_truncation = "allow"
 
 [package]
 name = "pam-authramp"
@@ -51,7 +51,6 @@ log.workspace = true
 toml.workspace = true
 
 [dev-dependencies]
-dotenv_codegen.workspace = true
 pam-client.workspace = true
 tempfile.workspace = true
 tempdir.workspace = true

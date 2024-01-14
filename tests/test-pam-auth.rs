@@ -48,8 +48,6 @@
 //! You should have received a copy of the GNU General Public License
 //! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#[macro_use]
-extern crate dotenv_codegen;
 extern crate pam_client;
 extern crate tempfile;
 
@@ -67,8 +65,8 @@ mod test_pam_auth {
     use super::common::utils;
     use pam_client::Flag;
 
-    const USER_NAME: &str = dotenv!("TEST_USER_NAME");
-    const USER_PWD: &str = dotenv!("TEST_USER_PWD");
+    const USER_NAME: &str = "user";
+    const USER_PWD: &str = "user";
 
     #[test]
     fn test_valid_auth_success() {
@@ -78,7 +76,7 @@ mod test_pam_auth {
             // Expect the authentication to succeed
             ctx.authenticate(Flag::NONE).expect("Authentication failed");
             ctx.acct_mgmt(Flag::NONE)
-                .expect("Account management failed")
+                .expect("Account management failed");
         });
     }
 
@@ -93,7 +91,7 @@ mod test_pam_auth {
 
             // Expect tally file gets created
             let tally_file_path = utils::get_tally_file_path(USER_NAME);
-            assert!(tally_file_path.exists(), "Tally file not created")
+            assert!(tally_file_path.exists(), "Tally file not created");
         });
     }
 
@@ -119,8 +117,8 @@ mod test_pam_auth {
 
             // Expect tally count
             let ini_content = fs::read_to_string(tally_file_path).unwrap();
-            assert!(ini_content.contains(&format!("count = {}", total_tries)));
-        })
+            assert!(ini_content.contains(&format!("count = {total_tries}")));
+        });
     }
 
     #[test]
@@ -164,7 +162,7 @@ mod test_pam_auth {
     #[test]
     fn test_exceeding_free_tries_causes_bounce() {
         utils::init_and_clear_test(|| {
-            let user_name = "user";
+            let user_name = USER_NAME;
             let user_pwd = "INVALID PASSWORD";
 
             // Step 0: Attempt authentication
@@ -191,7 +189,7 @@ mod test_pam_auth {
             let bounce_message = "Account locked! Unlocking in 29";
             let log = &ctx.conversation().log;
 
-            let log_str = format!("{:?}", log);
+            let log_str = format!("{log:?}");
 
             assert!(
                 log_str.contains(bounce_message),
@@ -220,7 +218,7 @@ mod test_pam_auth {
             fs::write(config_path, config_content).expect("Unable to write to authramp.conf");
 
             // Attempt authentication (which will fail)
-            let user_name = dotenv!("TEST_USER_NAME");
+            let user_name = USER_NAME;
             let mut ctx = get_pam_context(user_name, "INVALID");
             let auth_result = ctx.authenticate(Flag::NONE);
             assert!(auth_result.is_err(), "Authentication succeeded!");

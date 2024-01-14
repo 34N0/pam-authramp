@@ -41,7 +41,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{settings::Settings, syslog_error, syslog_info, Actions};
+use crate::{settings::Settings, log_error, log_info, Actions};
 use chrono::{DateTime, Duration, Utc};
 use pam::constants::PamResultCode;
 use users::User;
@@ -51,7 +51,7 @@ use users::User;
 #[derive(Debug, PartialEq)]
 pub struct Tally {
     /// An optional `PathBuf` representing the path to the file storing tally information.
-    pub tally_file: Option<PathBuf>,
+    pub file: Option<PathBuf>,
     /// An integer representing the number of authentication failures.
     pub failures_count: i32,
     /// A `DateTime<Utc>` representing the timestamp of the last authentication failure.
@@ -64,7 +64,7 @@ impl Default for Tally {
     /// Creates a default `Tally` instance with zero failures and the current timestamp.
     fn default() -> Self {
         Tally {
-            tally_file: None,
+            file: None,
             failures_count: 0,
             failure_instant: Utc::now(),
             unlock_instant: None,
@@ -74,7 +74,7 @@ impl Default for Tally {
 
 impl Tally {
     /// Calculates the delay based on the number of authentication failures and settings.
-    /// Uses the authramp formula: delay=ramp_multiplier×(fails − free_tries)×ln(fails − free_tries)+base_delay_seconds
+    /// Uses the authramp formula: `delay=ramp_multiplier×(fails` − `free_tries)×ln(fails` − `free_tries)+base_delay_seconds`
     ///
     /// # Arguments
     /// - `fails`: Number of authentication failures
@@ -84,10 +84,10 @@ impl Tally {
     /// Calculated delay as a floating-point number
     pub fn get_delay(&self, settings: &Settings) -> Duration {
         Duration::seconds(
-            (settings.ramp_multiplier as f64
-                * (self.failures_count as f64 - settings.free_tries as f64)
-                * ((self.failures_count as f64 - settings.free_tries as f64).ln())
-                + settings.base_delay_seconds as f64) as i64,
+            (f64::from(settings.ramp_multiplier)
+                * (f64::from(self.failures_count) - f64::from(settings.free_tries))
+                * ((f64::from(self.failures_count) - f64::from(settings.free_tries)).ln())
+                + f64::from(settings.base_delay_seconds)) as i64,
         )
     }
 
@@ -108,9 +108,9 @@ impl Tally {
         let tally_file = settings.tally_dir.join(user.name());
 
         if tally_file.exists() {
-            Self::load_tally_from_file(&mut tally, user, &tally_file, settings)?
+            Self::load_tally_from_file(&mut tally, user, &tally_file, settings)?;
         } else {
-            Self::create_tally_file(&mut tally, &tally_file, settings)?
+            Self::create_tally_file(&mut tally, &tally_file, settings)?;
         };
 
         Ok(tally)
@@ -132,11 +132,11 @@ impl Tally {
         settings: &Settings,
     ) -> Result<(), PamResultCode> {
         toml::from_str::<toml::Value>(&std::fs::read_to_string(tally_file).map_err(|e| {
-            syslog_error!("PAM_SYSTEM_ERR: Error reading tally file: {}", e);
+            log_error!("PAM_SYSTEM_ERR: Error reading tally file: {}", e);
             PamResultCode::PAM_SYSTEM_ERR
         })?)
         .map_err(|e| {
-            syslog_error!("PAM_SYSTEM_ERR: Error parsing tally file: {}", e);
+            log_error!("PAM_SYSTEM_ERR: Error parsing tally file: {}", e);
             PamResultCode::PAM_SYSTEM_ERR
         })
         .and_then(|value| {
@@ -144,7 +144,7 @@ impl Tally {
             if let Some(fails_table) = value.get("Fails").and_then(|v| v.as_table()) {
                 tally.failures_count = fails_table
                     .get("count")
-                    .and_then(|count| count.as_integer())
+                    .and_then(toml::Value::as_integer)
                     .map(|count| count as i32)
                     .unwrap_or_default();
 
@@ -160,7 +160,7 @@ impl Tally {
                     .and_then(|unlock_instant| unlock_instant.parse().ok());
             } else {
                 // If the "Fails" table doesn't exist, return an error
-                syslog_error!(
+                log_error!(
                     "PAM_SYSTEM_ERR: Error reading tally file: [Fails] table does not exist"
                 );
                 return Err(PamResultCode::PAM_SYSTEM_ERR);
@@ -205,13 +205,13 @@ impl Tally {
                 // Write the updated values back to the file
                 let toml_str = format!("[Fails]\ncount = {}", tally.failures_count);
                 std::fs::write(tally_file, toml_str).map_err(|e| {
-                    syslog_error!("PAM_SYSTEM_ERR: Error resetting tally: {}", e);
+                    log_error!("PAM_SYSTEM_ERR: Error resetting tally: {}", e);
                     PamResultCode::PAM_SYSTEM_ERR
                 })?;
 
                 // log account unlock
                 if total_failures > 0 {
-                    syslog_info!(
+                    log_info!(
                         "PAM_SUCCESS: Clear tally ({} failures) for the {:?} account. Account is unlocked.",
                         total_failures,
                         user.name()
@@ -241,13 +241,13 @@ impl Tally {
                     tally.unlock_instant.unwrap()
                 );
                 std::fs::write(tally_file, toml_str).map_err(|e| {
-                    syslog_error!("PAM_SYSTEM_ERR: Error writing tally file: {}", e);
+                    log_error!("PAM_SYSTEM_ERR: Error writing tally file: {}", e);
                     PamResultCode::PAM_SYSTEM_ERR
                 })?;
 
                 if tally.failures_count > settings.free_tries {
                     // log account unlock
-                    syslog_info!(
+                    log_info!(
                         "PAM_AUTH_ERR: Added tally ({} failures) for the {:?} account. Account is locked until {}.",
                         tally.failures_count,
                         user.name(),
@@ -274,7 +274,7 @@ impl Tally {
         _settings: &Settings,
     ) -> Result<(), PamResultCode> {
         fs::create_dir_all(tally_file.parent().unwrap()).map_err(|e| {
-            syslog_error!("PAM_SYSTEM_ERR: Error creating tally file: {}", e);
+            log_error!("PAM_SYSTEM_ERR: Error creating tally file: {}", e);
             PamResultCode::PAM_SYSTEM_ERR
         })?;
 
@@ -285,7 +285,7 @@ impl Tally {
 
         // Write the TOML string to disk
         std::fs::write(tally_file, toml_str).map_err(|e| {
-            syslog_error!("PAM_SYSTEM_ERR: Error writing tally file: {}", e);
+            log_error!("PAM_SYSTEM_ERR: Error writing tally file: {}", e);
             PamResultCode::PAM_SYSTEM_ERR
         })?;
 

@@ -60,7 +60,7 @@ All modules are unit tested. Run unit tests inside the crate folder:
 cargo test --lib
 ```
 #### Integration testing
-Edit the values in the `.env` file to a user on your system. The test will build the library and use the systems pam service to test authentication. The test will run with evelated privileges. Run the integration tests:
+Edit the constants in the `test-pam-auth.rs` file to a user on your system. The test will build the library and use the systems pam service to test authentication. The test will run with evelated privileges. Run the integration tests:
 ```console
 cargo test-integration
 ```
