@@ -28,7 +28,7 @@
 //! You should have received a copy of the GNU General Public License
 //! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{syslog_info, Actions};
+use crate::{log_info, Actions};
 use pam::constants::{PamFlag, PamResultCode};
 use std::collections::HashMap;
 use std::ffi::CStr;
@@ -84,7 +84,7 @@ impl Settings<'_> {
     ///
     /// * `user`: An optional `User` instance representing the user associated with
     ///   the PAM session.
-    /// * `args`: A vector of CStr references representing the PAM module arguments.
+    /// * `args`: A vector of `CStr` references representing the PAM module arguments.
     /// * `_flags`: PAM flags indicating the context of the PAM operation (unused).
     /// * `config_file`: An optional `PathBuf` specifying the path to the INI file. If
     ///   not provided, the default configuration file path is used.
@@ -95,7 +95,7 @@ impl Settings<'_> {
     /// indicating an error during the construction process.
     pub fn build<'a>(
         user: Option<User>,
-        args: Vec<&CStr>,
+        args: &[&CStr],
         _flags: PamFlag,
         config_file: Option<PathBuf>,
         pam_hook: &'a str,
@@ -110,14 +110,14 @@ impl Settings<'_> {
             ("authfail", Actions::AUTHFAIL),
         ]
         .iter()
-        .cloned()
+        .copied()
         .collect();
 
         // map argument to action
         settings.action = args.iter().find_map(|&carg| {
             carg.to_str()
                 .ok()
-                .and_then(|arg| action_map.get(arg).cloned())
+                .and_then(|arg| action_map.get(arg).copied())
         });
 
         // set default action if none is provided
@@ -147,10 +147,10 @@ impl Settings<'_> {
     /// # Returns
     ///
     /// A `Result` containing a reference to the PAM user (`&User`) if available, or a `PamResultCode`
-    /// indicating a user_unknown error if the user is not present.
+    /// indicating a `user_unknown` error if the user is not present.
     pub fn get_user(&self) -> Result<&User, PamResultCode> {
         self.user.as_ref().ok_or_else(|| {
-            syslog_info!("PAM_USER_UNKNOWN: Authentication failed because user is unknown",);
+            log_info!("PAM_USER_UNKNOWN: Authentication failed because user is unknown",);
             PamResultCode::PAM_USER_UNKNOWN
         })
     }
@@ -187,22 +187,16 @@ impl Settings<'_> {
                     .unwrap_or_else(|| Settings::default().tally_dir),
                 free_tries: s
                     .get("free_tries")
-                    .and_then(|val| val.as_integer())
-                    .map(|val| val as i32)
-                    .unwrap_or_else(|| Settings::default().free_tries),
+                    .and_then(toml::Value::as_integer).map_or_else(|| Settings::default().free_tries, |val| val as i32),
                 base_delay_seconds: s
                     .get("base_delay_seconds")
-                    .and_then(|val| val.as_integer())
-                    .map(|val| val as i32)
-                    .unwrap_or_else(|| Settings::default().base_delay_seconds),
+                    .and_then(toml::Value::as_integer).map_or_else(|| Settings::default().base_delay_seconds, |val| val as i32),
                 ramp_multiplier: s
                     .get("ramp_multiplier")
-                    .and_then(|val| val.as_float())
-                    .map(|val| val as i32)
-                    .unwrap_or_else(|| Settings::default().ramp_multiplier),
+                    .and_then(toml::Value::as_float).map_or_else(|| Settings::default().ramp_multiplier, |val| val as i32),
                 even_deny_root: s
                     .get("even_deny_root")
-                    .and_then(|val| val.as_bool())
+                    .and_then(toml::Value::as_bool)
                     .unwrap_or_else(|| Settings::default().even_deny_root),
                 ..Settings::default()
             })
@@ -213,9 +207,11 @@ impl Settings<'_> {
 // Unit Tests
 #[cfg(test)]
 mod tests {
+    extern crate tempdir;
+
+    use self::tempdir::TempDir;
     use super::*;
     use std::ffi::CStr;
-    use tempdir::TempDir;
     use users::User;
 
     #[test]
@@ -256,7 +252,7 @@ mod tests {
         // Build settings from TOML
         let result = Settings::build(
             Some(User::new(9999, "test_user", 9999)),
-            args,
+            &args,
             flags,
             Some(conf_file_path.clone()),
             "test",
@@ -281,7 +277,7 @@ mod tests {
         let flags: PamFlag = 0;
         let result = Settings::build(
             Some(User::new(9999, "test_user", 9999)),
-            args,
+            &args,
             flags,
             None,
             "test",
@@ -312,7 +308,7 @@ mod tests {
         // Build settings from TOML
         let result = Settings::build(
             Some(User::new(9999, "test_user", 9999)),
-            args,
+            &args,
             flags,
             Some(conf_file_path.clone()),
             "test",
@@ -321,7 +317,7 @@ mod tests {
         // Validate the result
         assert!(result.is_ok());
         let settings = result.unwrap();
-        println!("{:?}", settings);
+        // println!("{:?}", settings);
         assert_eq!(settings.action, Some(Actions::PREAUTH));
         assert_eq!(settings.free_tries, 6);
         assert_eq!(settings.tally_dir, PathBuf::from("/var/run/authramp"));
@@ -334,7 +330,7 @@ mod tests {
     fn test_build_settings_missing_user() {
         let args = [CStr::from_bytes_with_nul("preauth\0".as_bytes()).unwrap()].to_vec();
         let flags: PamFlag = 0;
-        let result = Settings::build(None, args, flags, None, "test");
+        let result = Settings::build(None, &args, flags, None, "test");
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), PamResultCode::PAM_SYSTEM_ERR);
     }

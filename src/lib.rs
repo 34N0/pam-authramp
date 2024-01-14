@@ -1,18 +1,18 @@
-//! # AuthRamp PAM Module
+//! # `AuthRamp` PAM Module
 //!
-//! The AuthRamp PAM (Pluggable Authentication Modules) module provides an account lockout mechanism
+//! The `AuthRamp` PAM (Pluggable Authentication Modules) module provides an account lockout mechanism
 //! based on the number of authentication failures. It calculates a dynamic delay for subsequent
 //! authentication attempts, increasing the delay with each failure to mitigate brute force attacks.
 //!
 //! ## Usage
 //!
-//! To use the AuthRamp PAM module, integrate it with the PAM system by configuring the `/etc/pam.d/`
+//! To use the `AuthRamp` PAM module, integrate it with the PAM system by configuring the `/etc/pam.d/`
 //! configuration files for the desired PAM-aware services. This module is designed for the
 //! `sm_authenticate` and `acct_mgmt` hooks.
 //!
 //! ## Configuration
 //!
-//! The behavior of the AuthRamp module is configurable through an INI file located at
+//! The behavior of the `AuthRamp` module is configurable through an INI file located at
 //! `/etc/security/authramp.conf` by default. The configuration file can be customized with settings
 //! such as the tally directory, free tries threshold, base delay, and multiplier.
 //!
@@ -52,9 +52,7 @@ mod tally;
 mod utils;
 
 extern crate chrono;
-extern crate once_cell;
 extern crate pam;
-extern crate tempdir;
 extern crate users;
 
 use chrono::{Duration, Utc};
@@ -62,13 +60,13 @@ use pam::constants::{PamFlag, PamResultCode, PAM_ERROR_MSG};
 use pam::conv::Conv;
 use pam::module::{PamHandle, PamHooks};
 use pam::pam_try;
-use settings::Settings;
 use std::cmp::min;
 use std::ffi::CStr;
-
 use std::thread::sleep;
-use tally::Tally;
 use users::get_user_by_name;
+
+use settings::Settings;
+use tally::Tally;
 
 // Action argument defines position in PAM stack
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -84,25 +82,25 @@ pam::pam_hooks!(Pamauthramp);
 impl PamHooks for Pamauthramp {
     /// Handles the `sm_authenticate` PAM hook, which is invoked during the authentication process.
     ///
-    /// This function initializes the AuthRamp module by setting up user information and loading settings.
+    /// This function initializes the `AuthRamp` module by setting up user information and loading settings.
     ///
     /// This can be called with the PREAUTH action argument:
-    /// auth        required                                     libpam_authramp.so preauth
+    /// auth        required                                     `libpam_authramp.so` preauth
     /// It then checks if an account is locked. And if that is true it bounces the auth.
     ///
     /// It can also be called with the AUTHFAIL action argument:
-    /// auth        [default=die]                                libpam_authramp.so authfail
+    /// auth        [default=die]                                `libpam_authramp.so` authfail
     /// It then locks the account and increments the delay.
     ///
     /// # Arguments
-    /// - `pamh`: PamHandle instance for interacting with PAM
+    /// - `pamh`: `PamHandle` instance for interacting with PAM
     /// - `args`: PAM arguments provided during authentication
     /// - `flags`: PAM flags indicating the context of the PAM operation
     ///
     /// # Returns
-    /// PAM_SUCCESS OR PAM_AUTH_ERR
+    /// `PAM_SUCCESS` OR `PAM_AUTH_ERR`
     fn sm_authenticate(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        init_authramp(pamh, args, flags, "auth", |pamh, settings, tally| {
+        init_authramp(pamh, &args, flags, "auth", |pamh, settings, tally| {
             // match action parameter
             match settings.get_action()? {
                 Actions::PREAUTH => {
@@ -123,22 +121,22 @@ impl PamHooks for Pamauthramp {
 
     /// Handles the `acct_mgmt` PAM hook, which is invoked during the account management process.
     ///
-    /// This function initializes the AuthRamp module by setting up user information and loading settings.
+    /// This function initializes the `AuthRamp` module by setting up user information and loading settings.
     ///
     /// This hook is only called on sucessful authentication and clears the tally to unlock the account:
-    /// account     required                                     libpam_authramp.so
+    /// account     required                                     `libpam_authramp.so`
     ///
     /// # Arguments
-    /// - `pamh`: PamHandle instance for interacting with PAM
+    /// - `pamh`: `PamHandle` instance for interacting with PAM
     /// - `args`: PAM arguments provided during account management
     /// - `flags`: PAM flags indicating the context of the PAM operation
     ///
     /// # Returns
-    /// PAM_SUCESS OR PAM_SYS_ERR
+    /// `PAM_SUCESS` OR `PAM_SYS_ERR`
     fn acct_mgmt(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
         pam_try!(init_authramp(
             pamh,
-            args,
+            &args,
             flags,
             "account",
             |_pamh, _settings, _tally| { Ok(PamResultCode::PAM_SUCCESS) }
@@ -147,20 +145,20 @@ impl PamHooks for Pamauthramp {
 }
 
 /// Initializes the authramp module by setting up user information and loading settings.
-/// Calls the provided pam_hook function with the initialized variables.
+/// Calls the provided `pam_hook` function with the initialized variables.
 ///
 /// # Arguments
-/// - `pamh`: PamHandle instance for interacting with PAM
+/// - `pamh`: `PamHandle` instance for interacting with PAM
 /// - `_args`: PAM arguments provided during authentication
 /// - `_flags`: PAM flags indicating the context of the PAM operation
 /// - `pam_hook`: Function to be called with the initialized variables
 ///
 /// # Returns
-/// Result from the pam_hook function or PAM error code if initialization fails
+/// Result from the `pam_hook` function or PAM error code if initialization fails
 fn init_authramp<F, R>(
     pamh: &mut PamHandle,
-    _args: Vec<&CStr>,
-    _flags: PamFlag,
+    args: &[&CStr],
+    flags: PamFlag,
     pam_hook_desc: &str,
     pam_hook: F,
 ) -> Result<R, PamResultCode>
@@ -174,7 +172,7 @@ where
     ));
 
     // Read configuration file
-    let settings = Settings::build(user.clone(), _args, _flags, None, pam_hook_desc)?;
+    let settings = Settings::build(user.clone(), args, flags, None, pam_hook_desc)?;
 
     utils::syslog::init_log(pamh, &settings)?;
 
@@ -193,8 +191,6 @@ where
 /// # Returns
 /// Formatted string indicating the remaining time
 fn format_remaining_time(remaining_time: Duration) -> String {
-    let mut formatted_time = String::new();
-
     fn append_unit(value: i64, unit: &str, formatted_time: &mut String) {
         if value > 0 {
             let unit_str = if value == 1 {
@@ -202,9 +198,11 @@ fn format_remaining_time(remaining_time: Duration) -> String {
             } else {
                 unit
             };
-            formatted_time.push_str(&format!("{} {} ", value, unit_str));
+            formatted_time.push_str(&format!("{value} {unit_str} "));
         }
     }
+
+    let mut formatted_time = String::new();
 
     append_unit(remaining_time.num_hours(), "hour", &mut formatted_time);
     append_unit(
@@ -225,12 +223,12 @@ fn format_remaining_time(remaining_time: Duration) -> String {
 /// If the account is locked, it sends periodic messages to the user until the account is unlocked.
 ///
 /// # Arguments
-/// - `pamh`: PamHandle instance for interacting with PAM
+/// - `pamh`: `PamHandle` instance for interacting with PAM
 /// - `settings`: Settings for the authramp module
 /// - `tally`: Tally information containing failure count and timestamps
 ///
 /// # Returns
-/// PAM_SUCCESS if the account is successfully unlocked, PAM_AUTH_ERR otherwise
+/// `PAM_SUCCESS` if the account is successfully unlocked, `PAM_AUTH_ERR` otherwise
 fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamResultCode {
     // get user
     let user = match settings.get_user() {
@@ -252,7 +250,7 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
                 .unlock_instant
                 .unwrap_or(tally.failure_instant + delay);
 
-            syslog_info!(
+            log_info!(
                 "PAM_AUTH_ERR: Account {:?} is getting bounced. Account still locked until {}",
                 user,
                 unlock_instant,

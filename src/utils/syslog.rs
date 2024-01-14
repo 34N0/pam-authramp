@@ -49,27 +49,29 @@
 //! You should have received a copy of the GNU General Public License
 //! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use log::LevelFilter;
+extern crate log;
+extern crate sysinfo;
+extern crate syslog;
+
+use self::log::LevelFilter;
+use self::sysinfo::{Pid, System};
+use self::syslog::{BasicLogger, Facility, Formatter3164};
 use pam::module::PamHandle;
 use pam::{constants::PamResultCode, items::Service};
-use sysinfo::{Pid, System};
-use syslog::{BasicLogger, Facility, Formatter3164};
 
 use crate::settings::Settings;
-
-extern crate syslog;
 
 /// Constants
 const MODULE_NAME: &str = "pam_authramp";
 
 /// Struct to hold syslog state
-pub struct SyslogState {
+pub struct LogState {
     pub logger_initialized: bool,
     pub pre_log: Option<String>,
 }
 
 /// Static variable to hold syslog state
-pub static mut SYSLOG_STATE: SyslogState = SyslogState {
+pub static mut SYSLOG_STATE: LogState = LogState {
     logger_initialized: false,
     pre_log: None,
 };
@@ -78,7 +80,7 @@ pub static mut SYSLOG_STATE: SyslogState = SyslogState {
 ///
 /// This function should be called once from outside the module to set up the syslog logger.
 /// It initializes the logger with syslog settings, such as the facility, process name, etc.
-/// The resulting logger is used by the syslog_info and syslog_error macros.
+/// The resulting logger is used by the `syslog_info` and `syslog_error` macros.
 ///
 /// # Arguments
 ///
@@ -135,10 +137,10 @@ pub fn init_log(pamh: &mut PamHandle, settings: &Settings) -> Result<(), PamResu
 /// # Examples
 ///
 /// ```
-/// syslog_info!("This is an informational message");
+/// log_info!("This is an informational message");
 /// ```
 #[macro_export]
-macro_rules! syslog_info {
+macro_rules! log_info {
     ($($arg:tt)*) => {
         {
             unsafe {
@@ -159,10 +161,10 @@ macro_rules! syslog_info {
 /// # Examples
 ///
 /// ```
-/// syslog_error!("This is an error message");
+/// log_error!("This is an error message");
 /// ```
 #[macro_export]
-macro_rules! syslog_error {
+macro_rules! log_error {
     ($($arg:tt)*) => {
         {
             unsafe {

@@ -1,2 +1,2 @@
 [alias] 
-xtask = 'run --package xtask --'
+test-integration = 'run --package xtask-test-integration --'
