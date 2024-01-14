@@ -49,15 +49,17 @@
 //! You should have received a copy of the GNU General Public License
 //! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use log::LevelFilter;
+extern crate log;
+extern crate sysinfo;
+extern crate syslog;
+
+use self::log::LevelFilter;
 use pam::module::PamHandle;
 use pam::{constants::PamResultCode, items::Service};
-use sysinfo::{Pid, System};
-use syslog::{BasicLogger, Facility, Formatter3164};
+use self::sysinfo::{Pid, System};
+use self::syslog::{BasicLogger, Facility, Formatter3164};
 
 use crate::settings::Settings;
-
-extern crate syslog;
 
 /// Constants
 const MODULE_NAME: &str = "pam_authramp";

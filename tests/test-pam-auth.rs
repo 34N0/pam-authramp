@@ -50,6 +50,8 @@
 
 #[macro_use]
 extern crate dotenv_codegen;
+extern crate pam_client;
+extern crate tempfile;
 
 mod common;
 

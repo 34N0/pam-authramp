@@ -214,9 +214,11 @@ impl Settings {
 // Unit Tests
 #[cfg(test)]
 mod tests {
+    extern crate tempdir;
+    
     use super::*;
     use std::ffi::CStr;
-    use tempdir::TempDir;
+    use self::tempdir::TempDir;
     use users::User;
 
     #[test]

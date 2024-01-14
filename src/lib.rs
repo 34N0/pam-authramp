@@ -51,18 +51,22 @@ mod settings;
 mod tally;
 mod utils;
 
+extern crate chrono;
+extern crate pam;
+extern crate users;
+
 use chrono::{Duration, Utc};
 use pam::constants::{PamFlag, PamResultCode, PAM_ERROR_MSG};
 use pam::conv::Conv;
 use pam::module::{PamHandle, PamHooks};
 use pam::pam_try;
-use settings::Settings;
 use std::cmp::min;
 use std::ffi::CStr;
-
 use std::thread::sleep;
-use tally::Tally;
 use users::get_user_by_name;
+
+use settings::Settings;
+use tally::Tally;
 
 // Action argument defines position in PAM stack
 #[derive(Debug, Default, Clone, Copy, PartialEq)]

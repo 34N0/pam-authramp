@@ -1,0 +1,9 @@
+[package]
+name = "xtask-test-integration"
+edition = "2021"
+publish = false
+
+[dependencies]
+cli-xtask.workspace = true
+xshell.workspace = true
+anyhow.workspace = true

@@ -4,16 +4,46 @@ version = "0.3.0"
 description = "The AuthRamp PAM module provides an account lockout mechanism based on the number of authentication failures."
 authors = ["34n0 <34n0@immerda.ch>"]
 license = "GPL-3.0"
-edition = "2021"
+
+[lib]
+name = "pam_authramp"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
 
 [workspace]
-members = ["crates/lib", "crates/xtask"]
-default-members = ["crates/lib"]
+resolver= "2"
+members = ["crates/xtask-test-integration"]
 
-[dev-dependencies]
+[workspace.dependencies]
+chrono = "0.4.31"
+pam-bindings = "0.1.1"
+sysinfo = "0.30.0"
+syslog = "6.1.0"
+users = "0.11.0"
+log = "0.4"
+toml = "0.8.8"
 pam-client = "0.5.0"
 dotenv_codegen = "0.15.0"
 tempfile = "3.8.1"
+tempdir = "0.3.7"
+anyhow = "1.0.75"
+cli-xtask = { version = "0.8.0", features = ["main", "lib-crate"] }
+xshell = "0.2.5"
+
+[dependencies]
+chrono.workspace = true
+pam-bindings.workspace = true
+sysinfo.workspace = true
+syslog.workspace = true
+users.workspace = true
+log.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+dotenv_codegen.workspace = true
+pam-client.workspace = true
+tempfile.workspace = true
+tempdir.workspace = true
 
 [package.metadata.generate-rpm]
 assets = [
