@@ -298,9 +298,9 @@ impl Tally {
 mod tests {
     extern crate tempdir;
 
+    use self::tempdir::TempDir;
     use super::*;
     use std::fs;
-    use self::tempdir::TempDir;
     use users::User;
 
     #[test]
@@ -367,7 +367,7 @@ mod tests {
 
         // Check if the TOML file has been created with default values
         let toml_content = fs::read_to_string(tally_file_path).unwrap();
-        println!("{}", &toml_content);
+        // println!("{}", &toml_content);
         assert!(toml_content.contains("[Fails]"));
         assert!(toml_content.contains("count = 0"));
         assert!(!toml_content.contains("unlock_instant = "));

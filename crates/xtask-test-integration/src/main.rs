@@ -78,19 +78,19 @@ fn main() -> anyhow::Result<()> {
     let sh = Shell::new()?;
 
     cmd!(sh, "cargo build").run()?;
-            cmd!(
-                sh,
-                "sudo cp target/debug/libpam_authramp.so /lib64/security"
-            )
-            .run()?;
-            set_and_remove_sudo_runner(|| {
-                let _ = cmd!(
-                    sh,
-                    "cargo test --test '*' -- --test-threads=1 --show-output"
-                )
-                .run();
-                let _ = cmd!(sh, "sudo rm -f /lib64/security/libpam_authramp.so").run();
-                let _ = cmd!(sh, "sudo rm -rf /var/run/authramp").run();
-            });
+    cmd!(
+        sh,
+        "sudo cp target/debug/libpam_authramp.so /lib64/security"
+    )
+    .run()?;
+    set_and_remove_sudo_runner(|| {
+        let _ = cmd!(
+            sh,
+            "cargo test --test '*' -- --test-threads=1 --show-output"
+        )
+        .run();
+        let _ = cmd!(sh, "sudo rm -f /lib64/security/libpam_authramp.so").run();
+        let _ = cmd!(sh, "sudo rm -rf /var/run/authramp").run();
+    });
     Ok(())
 }

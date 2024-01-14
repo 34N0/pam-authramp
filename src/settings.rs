@@ -215,10 +215,10 @@ impl Settings {
 #[cfg(test)]
 mod tests {
     extern crate tempdir;
-    
+
+    use self::tempdir::TempDir;
     use super::*;
     use std::ffi::CStr;
-    use self::tempdir::TempDir;
     use users::User;
 
     #[test]
@@ -321,7 +321,7 @@ mod tests {
         // Validate the result
         assert!(result.is_ok());
         let settings = result.unwrap();
-        println!("{:?}", settings);
+        // println!("{:?}", settings);
         assert_eq!(settings.action, Some(Actions::PREAUTH));
         assert_eq!(settings.tally_dir, PathBuf::from(DEFAULT_TALLY_DIR));
         assert_eq!(settings.free_tries, 6);

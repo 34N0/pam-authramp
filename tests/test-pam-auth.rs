@@ -215,7 +215,7 @@ mod test_pam_auth {
                 ramp_multiplier = 50\n",
                 custom_tally_dir.path().display()
             );
-            println!("{}", &config_content);
+            // println!("{}", &config_content);
             let config_path = "/etc/security/authramp.conf";
             fs::write(config_path, config_content).expect("Unable to write to authramp.conf");
 
@@ -227,7 +227,7 @@ mod test_pam_auth {
 
             // Check if the tally file is created in the custom tally_dir path
             let tally_file_path = custom_tally_dir.path().join(user_name);
-            println!("{:?}", &tally_file_path);
+            // println!("{:?}", &tally_file_path);
             assert!(
                 Path::exists(&tally_file_path),
                 "Tally file not created in custom tally_dir"

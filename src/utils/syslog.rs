@@ -54,10 +54,10 @@ extern crate sysinfo;
 extern crate syslog;
 
 use self::log::LevelFilter;
-use pam::module::PamHandle;
-use pam::{constants::PamResultCode, items::Service};
 use self::sysinfo::{Pid, System};
 use self::syslog::{BasicLogger, Facility, Formatter3164};
+use pam::module::PamHandle;
+use pam::{constants::PamResultCode, items::Service};
 
 use crate::settings::Settings;
 

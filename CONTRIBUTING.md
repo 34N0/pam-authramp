@@ -62,7 +62,7 @@ cargo test --lib
 #### Integration testing
 Edit the values in the `.env` file to a user on your system. The test will build the library and use the systems pam service to test authentication. The test will run with evelated privileges. Run the integration tests:
 ```console
-cargo integration-test
+cargo test-integration
 ```
 ### Linting
 Fix:
