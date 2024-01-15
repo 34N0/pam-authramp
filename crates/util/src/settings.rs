@@ -38,12 +38,12 @@ use crate::types::Actions;
 
 use users::User;
 
-const DEFAULT_TALLY_DIR: &str = "/var/run/authramp";
+
 const DEFAULT_CONFIG_FILE_PATH: &str = "/etc/security/authramp.conf";
 
 // Settings struct represents the configuration loaded from default values, configuration file and parameters
 #[derive(Debug)]
-pub struct Settings {
+pub struct Settings<'a> {
     // Directory where tally information is stored.
     pub tally_dir: PathBuf,
     // Number of allowed free authentication attempts before applying delays.
@@ -53,7 +53,7 @@ pub struct Settings {
     // Multiplier for the delay calculation based on the number of failures.
     pub ramp_multiplier: i32,
     // PAM Hook
-    pub pam_hook: String,
+    pub pam_hook: &'a str,
     // PAM action
     pub action: Option<Actions>,
     // PAM user
@@ -62,23 +62,23 @@ pub struct Settings {
     pub even_deny_root: bool,
 }
 
-impl Default for Settings {
+impl Default for Settings<'_> {
     /// Creates a default 'Settings' struct. Default configruation values are set here.
     fn default() -> Self {
         Settings {
-            tally_dir: PathBuf::from(DEFAULT_TALLY_DIR),
+            tally_dir: PathBuf::from("/var/run/authramp"),
             action: Some(Actions::AUTHSUCC),
             user: None,
             free_tries: 6,
             base_delay_seconds: 30,
             ramp_multiplier: 50,
-            pam_hook: String::from("auth"),
+            pam_hook: "auth",
             even_deny_root: false,
         }
     }
 }
 
-impl Settings {
+impl Settings<'_> {
     /// Constructs a `Settings` instance based on input parameters, including user
     /// information, PAM flags, and an optional configuration file path.
     ///
@@ -95,17 +95,13 @@ impl Settings {
     ///
     /// A `Result` containing the constructed `Settings` instance or a `PamResultCode`
     /// indicating an error during the construction process.
-    /// 
-    /// # Errors
-    /// 
-    /// Returns a `PamResultCode` error.
-    pub fn build(
+    pub fn build<'a>(
         user: Option<User>,
         args: &[&CStr],
         _flags: PamFlag,
         config_file: Option<PathBuf>,
-        pam_hook: &str,
-    ) -> Result<Settings, PamResultCode> {
+        pam_hook: &'a str,
+    ) -> Result<Settings<'a>, PamResultCode> {
         // Load INI file.
         let mut settings = Self::load_conf_file(config_file);
 
@@ -133,7 +129,7 @@ impl Settings {
         settings.user = Some(user.ok_or(PamResultCode::PAM_SYSTEM_ERR)?);
 
         // pam hook
-        settings.pam_hook = String::from(pam_hook);
+        settings.pam_hook = pam_hook;
 
         Ok(settings)
     }
@@ -144,10 +140,6 @@ impl Settings {
     ///
     /// A `Result` containing the PAM action (`Actions`) if available, or a `PamResultCode`
     /// aborting Pam Authentication if the action is not present.
-    ///
-    /// # Errors
-    /// 
-    /// Returns a `PamResultCode` error.
     pub fn get_action(&self) -> Result<Actions, PamResultCode> {
         self.action.ok_or(PamResultCode::PAM_ABORT)
     }
@@ -158,10 +150,6 @@ impl Settings {
     ///
     /// A `Result` containing a reference to the PAM user (`&User`) if available, or a `PamResultCode`
     /// indicating a `user_unknown` error if the user is not present.
-    ///
-    /// # Errors
-    /// 
-    /// Returns a `PamResultCode` error.
     pub fn get_user(&self) -> Result<&User, PamResultCode> {
         self.user.as_ref().ok_or_else(|| {
             log_info!("PAM_USER_UNKNOWN: Authentication failed because user is unknown",);
@@ -180,7 +168,7 @@ impl Settings {
     ///
     /// A `Settings` instance populated with values from the configuration file, or the
     /// default values if the file is not present or cannot be loaded.
-    fn load_conf_file(config_file: Option<PathBuf>) -> Settings {
+    fn load_conf_file(config_file: Option<PathBuf>) -> Settings<'static> {
         // Read TOML file using the toml crate
         let content =
             fs::read_to_string(config_file.unwrap_or(PathBuf::from(DEFAULT_CONFIG_FILE_PATH))).ok();
@@ -229,7 +217,10 @@ mod tests {
     #[test]
     fn test_default_settings() {
         let default_settings = Settings::default();
-        assert_eq!(default_settings.tally_dir, PathBuf::from(DEFAULT_TALLY_DIR));
+        assert_eq!(
+            default_settings.tally_dir,
+            PathBuf::from("/var/run/authramp")
+        );
         assert_eq!(default_settings.action, Some(Actions::AUTHSUCC));
         assert!(default_settings.user.is_none());
         assert_eq!(default_settings.free_tries, 6);
@@ -328,7 +319,10 @@ mod tests {
         let settings = result.unwrap();
         // println!("{:?}", settings);
         assert_eq!(settings.action, Some(Actions::PREAUTH));
-        assert_eq!(settings.tally_dir, PathBuf::from(DEFAULT_TALLY_DIR));
+        assert_eq!(
+            settings.tally_dir,
+            PathBuf::from("/var/run/authramp")
+        );
         assert_eq!(settings.free_tries, 6);
         assert_eq!(settings.base_delay_seconds, 30);
         assert_eq!(settings.ramp_multiplier, 50);

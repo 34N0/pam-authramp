@@ -396,7 +396,7 @@ mod tests {
             free_tries: 6,
             ramp_multiplier: 50,
             base_delay_seconds: 30,
-            pam_hook: String::from("test"),
+            pam_hook: "test",
             even_deny_root: false,
         };
 
@@ -437,7 +437,7 @@ mod tests {
             free_tries: 6,
             ramp_multiplier: 50,
             base_delay_seconds: 30,
-            pam_hook: String::from("test"),
+            pam_hook: "test",
             even_deny_root: false,
         };
 
