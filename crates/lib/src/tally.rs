@@ -41,12 +41,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use util::settings::Settings;
-use util::types::Actions;
-use util::{log_error, log_info};
 use chrono::{DateTime, Duration, Utc};
 use pam::constants::PamResultCode;
 use users::User;
+use util::settings::Settings;
+use util::types::Actions;
+use util::{log_error, log_info};
 
 /// The `Tally` struct represents the account lockout information, including
 /// the number of authentication failures and the timestamp of the last failure.
@@ -86,10 +86,10 @@ impl Tally {
     /// Calculated delay as a floating-point number
     pub fn get_delay(&self, settings: &Settings) -> Duration {
         Duration::seconds(
-            (f64::from(settings.ramp_multiplier)
-                * (f64::from(self.failures_count) - f64::from(settings.free_tries))
-                * ((f64::from(self.failures_count) - f64::from(settings.free_tries)).ln())
-                + f64::from(settings.base_delay_seconds)) as i64,
+            (f64::from(settings.config.ramp_multiplier)
+                * (f64::from(self.failures_count) - f64::from(settings.config.free_tries))
+                * ((f64::from(self.failures_count) - f64::from(settings.config.free_tries)).ln())
+                + f64::from(settings.config.base_delay_seconds)) as i64,
         )
     }
 
@@ -107,7 +107,7 @@ impl Tally {
         let mut tally = Tally::default();
         let user = settings.get_user()?;
 
-        let tally_file = settings.tally_dir.join(user.name());
+        let tally_file = settings.config.tally_dir.join(user.name());
 
         if tally_file.exists() {
             Self::load_tally_from_file(&mut tally, user, &tally_file, settings)?;
@@ -247,7 +247,7 @@ impl Tally {
                     PamResultCode::PAM_SYSTEM_ERR
                 })?;
 
-                if tally.failures_count > settings.free_tries {
+                if tally.failures_count > settings.config.free_tries {
                     // log account unlock
                     log_info!(
                         "PAM_AUTH_ERR: Added tally ({} failures) for the {:?} account. Account is locked until {}.",
@@ -298,10 +298,12 @@ impl Tally {
 // Unit Tests
 #[cfg(test)]
 mod tests {
-    use tempdir::TempDir;
     use super::*;
     use std::fs;
+    use tempdir::TempDir;
     use users::User;
+
+    use util::config::Config;
 
     #[test]
     fn test_open_existing_tally_file() {
@@ -318,10 +320,15 @@ mod tests {
         "#;
         std::fs::write(tally_file_path, toml_str).unwrap();
 
+        let config = Config {
+            tally_dir: temp_dir.path().to_path_buf(),
+            ..Config::default()
+        };
+
         // Create settings and call new_from_tally_file
         let settings = Settings {
             user: Some(User::new(9999, "test_user_a", 9999)),
-            tally_dir: temp_dir.path().to_path_buf(),
+            config,
             action: Some(Actions::PREAUTH),
             ..Default::default()
         };
@@ -349,10 +356,15 @@ mod tests {
         let temp_dir = TempDir::new("test_open_nonexistent_tally_file").unwrap();
         let tally_file_path = temp_dir.path().join("test_user_b");
 
+        let config = Config {
+            tally_dir: temp_dir.path().to_path_buf(),
+            ..Config::default()
+        };
+
         // Create settings and call open
         let settings = Settings {
             user: Some(User::new(9999, "test_user_b", 9999)),
-            tally_dir: temp_dir.path().to_path_buf(),
+            config,
             ..Default::default()
         };
 
@@ -388,16 +400,20 @@ mod tests {
     "#;
         std::fs::write(&tally_file_path, toml_str).unwrap();
 
-        // Create settings and call new_from_tally_file with AUTHFAIL action
-        let settings = Settings {
-            user: Some(User::new(9999, "test_user_c", 9999)),
+        let config = Config {
             tally_dir: temp_dir.path().to_path_buf(),
-            action: Some(Actions::AUTHFAIL),
             free_tries: 6,
             ramp_multiplier: 50,
             base_delay_seconds: 30,
-            pam_hook: "test",
             even_deny_root: false,
+        };
+
+        // Create settings and call new_from_tally_file with AUTHFAIL action
+        let settings = Settings {
+            user: Some(User::new(9999, "test_user_c", 9999)),
+            action: Some(Actions::AUTHFAIL),
+            pam_hook: "test",
+            config,
         };
 
         let tally = Tally::new_from_tally_file(&settings).unwrap();
@@ -429,16 +445,20 @@ mod tests {
     "#;
         std::fs::write(&tally_file_path, toml_str).unwrap();
 
-        // Create settings and call new_from_tally_file with AUTHSUCC action
-        let settings = Settings {
-            user: Some(User::new(9999, "test_user_d", 9999)),
+        let config = Config {
             tally_dir: temp_dir.path().to_path_buf(),
-            action: Some(Actions::AUTHSUCC),
             free_tries: 6,
             ramp_multiplier: 50,
             base_delay_seconds: 30,
-            pam_hook: "test",
             even_deny_root: false,
+        };
+
+        // Create settings and call new_from_tally_file with AUTHSUCC action
+        let settings = Settings {
+            user: Some(User::new(9999, "test_user_d", 9999)),
+            action: Some(Actions::AUTHSUCC),
+            pam_hook: "test",
+            config,
         };
 
         let _tally = Tally::new_from_tally_file(&settings).unwrap();

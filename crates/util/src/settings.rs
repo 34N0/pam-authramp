@@ -28,52 +28,36 @@
 //! You should have received a copy of the GNU General Public License
 //! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+use crate::config::Config;
+use crate::log_info;
+use crate::types::Actions;
 use pam::constants::{PamFlag, PamResultCode};
 use std::collections::HashMap;
 use std::ffi::CStr;
-use std::fs;
-use std::path::PathBuf;
-use crate::log_info;
-use crate::types::Actions;
 
 use users::User;
-
-
-const DEFAULT_CONFIG_FILE_PATH: &str = "/etc/security/authramp.conf";
 
 // Settings struct represents the configuration loaded from default values, configuration file and parameters
 #[derive(Debug)]
 pub struct Settings<'a> {
-    // Directory where tally information is stored.
-    pub tally_dir: PathBuf,
-    // Number of allowed free authentication attempts before applying delays.
-    pub free_tries: i32,
-    // Base delay applied to each authentication failure.
-    pub base_delay_seconds: i32,
-    // Multiplier for the delay calculation based on the number of failures.
-    pub ramp_multiplier: i32,
     // PAM Hook
     pub pam_hook: &'a str,
     // PAM action
     pub action: Option<Actions>,
     // PAM user
     pub user: Option<User>,
-    // Even lock out root user
-    pub even_deny_root: bool,
+    // Config
+    pub config: Config,
 }
 
 impl Default for Settings<'_> {
     /// Creates a default 'Settings' struct. Default configruation values are set here.
     fn default() -> Self {
         Settings {
-            tally_dir: PathBuf::from("/var/run/authramp"),
             action: Some(Actions::AUTHSUCC),
             user: None,
-            free_tries: 6,
-            base_delay_seconds: 30,
-            ramp_multiplier: 50,
             pam_hook: "auth",
-            even_deny_root: false,
+            config: Config::load_file(None),
         }
     }
 }
@@ -95,19 +79,18 @@ impl Settings<'_> {
     ///
     /// A `Result` containing the constructed `Settings` instance or a `PamResultCode`
     /// indicating an error during the construction process.
-    /// 
+    ///
     /// # Errors
     ///
-    /// Returns a PamResultCode error.
+    /// Returns a `PamResultCode` error.
     pub fn build<'a>(
         user: Option<User>,
         args: &[&CStr],
         _flags: PamFlag,
-        config_file: Option<PathBuf>,
         pam_hook: &'a str,
     ) -> Result<Settings<'a>, PamResultCode> {
         // Load INI file.
-        let mut settings = Self::load_conf_file(config_file);
+        let mut settings = Settings::default();
 
         // create possible action collection
         let action_map: HashMap<&str, Actions> = [
@@ -147,7 +130,7 @@ impl Settings<'_> {
     ///
     /// # Errors
     ///
-    /// Returns a PamResultCode error.
+    /// Returns a `PamResultCode` error.
     pub fn get_action(&self) -> Result<Actions, PamResultCode> {
         self.action.ok_or(PamResultCode::PAM_ABORT)
     }
@@ -161,67 +144,18 @@ impl Settings<'_> {
     ///     
     /// # Errors
     ///
-    /// Returns a PamResultCode error.
+    /// Returns a `PamResultCode` error.
     pub fn get_user(&self) -> Result<&User, PamResultCode> {
         self.user.as_ref().ok_or_else(|| {
             log_info!("PAM_USER_UNKNOWN: Authentication failed because user is unknown",);
             PamResultCode::PAM_USER_UNKNOWN
         })
     }
-
-    /// Loads configuration settings from an INI file, returning a `Settings` instance.
-    ///
-    /// # Arguments
-    ///
-    /// * `config_file`: An optional `PathBuf` specifying the path to the INI file. If
-    ///   not provided, the default configuration file path is used.
-    ///
-    /// # Returns
-    ///
-    /// A `Settings` instance populated with values from the configuration file, or the
-    /// default values if the file is not present or cannot be loaded.
-    fn load_conf_file(config_file: Option<PathBuf>) -> Settings<'static> {
-        // Read TOML file using the toml crate
-        let content =
-            fs::read_to_string(config_file.unwrap_or(PathBuf::from(DEFAULT_CONFIG_FILE_PATH))).ok();
-
-        // Parse TOML content into a TomlTable
-        let toml_table: Option<toml::value::Table> =
-            content.and_then(|c| toml::de::from_str(&c).ok());
-
-        // Extract the "Settings" section from the TOML table
-        let settings = toml_table.and_then(|t| t.get("Settings").cloned());
-
-        // Map the settings to the Settings struct
-        settings
-            .map(|s| Settings {
-                tally_dir: s
-                    .get("tally_dir")
-                    .and_then(|val| val.as_str().map(PathBuf::from))
-                    .unwrap_or_else(|| Settings::default().tally_dir),
-                free_tries: s
-                    .get("free_tries")
-                    .and_then(toml::Value::as_integer).map_or_else(|| Settings::default().free_tries, |val| val as i32),
-                base_delay_seconds: s
-                    .get("base_delay_seconds")
-                    .and_then(toml::Value::as_integer).map_or_else(|| Settings::default().base_delay_seconds, |val| val as i32),
-                ramp_multiplier: s
-                    .get("ramp_multiplier")
-                    .and_then(toml::Value::as_float).map_or_else(|| Settings::default().ramp_multiplier, |val| val as i32),
-                even_deny_root: s
-                    .get("even_deny_root")
-                    .and_then(toml::Value::as_bool)
-                    .unwrap_or_else(|| Settings::default().even_deny_root),
-                ..Settings::default()
-            })
-            .unwrap_or_default()
-    }
 }
 
 // Unit Tests
 #[cfg(test)]
 mod tests {
-    use tempdir::TempDir;
     use super::*;
     use std::ffi::CStr;
     use users::User;
@@ -229,58 +163,8 @@ mod tests {
     #[test]
     fn test_default_settings() {
         let default_settings = Settings::default();
-        assert_eq!(
-            default_settings.tally_dir,
-            PathBuf::from("/var/run/authramp")
-        );
         assert_eq!(default_settings.action, Some(Actions::AUTHSUCC));
         assert!(default_settings.user.is_none());
-        assert_eq!(default_settings.free_tries, 6);
-        assert_eq!(default_settings.base_delay_seconds, 30);
-        assert_eq!(default_settings.ramp_multiplier, 50);
-        assert!(!default_settings.even_deny_root);
-    }
-
-    #[test]
-    fn test_build_settings_from_toml() {
-        let temp_dir = TempDir::new("test_build_settings_from_toml").unwrap();
-        let conf_file_path = temp_dir.path().join("config.conf");
-
-        // Create a TOML file with settings
-        let toml_content = r#"
-        [Settings]
-        tally_dir = "/tmp/tally_dir"
-        free_tries = 10
-        base_delay_seconds = 15
-        ramp_multiplier = 20.0
-        even_deny_root = true
-    "#;
-        std::fs::write(&conf_file_path, toml_content).unwrap();
-
-        // Create PAM arguments
-        let args = [CStr::from_bytes_with_nul("preauth\0".as_bytes()).unwrap()].to_vec();
-        let flags: PamFlag = 0;
-
-        // Build settings from TOML
-        let result = Settings::build(
-            Some(User::new(9999, "test_user", 9999)),
-            &args,
-            flags,
-            Some(conf_file_path.clone()),
-            "test",
-        );
-
-        // Validate the result
-        assert!(result.is_ok());
-        let settings = result.unwrap();
-        assert_eq!(settings.action, Some(Actions::PREAUTH));
-        assert_eq!(settings.tally_dir, PathBuf::from("/tmp/tally_dir"));
-        assert!(settings.user.is_some());
-        assert_eq!(settings.user.unwrap().name(), "test_user");
-        assert_eq!(settings.free_tries, 10);
-        assert_eq!(settings.base_delay_seconds, 15);
-        assert_eq!(settings.ramp_multiplier, 20);
-        assert!(settings.even_deny_root);
     }
 
     #[test]
@@ -291,61 +175,16 @@ mod tests {
             Some(User::new(9999, "test_user", 9999)),
             &args,
             flags,
-            None,
             "test",
         );
         assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_build_settings_from_toml_commented_out() {
-        let temp_dir = TempDir::new("test_build_settings_from_toml").unwrap();
-        let conf_file_path = temp_dir.path().join("config.conf");
-
-        // Create a TOML file with settings
-        let toml_content = r#"
-        [Settings]
-        # tally_dir = "/tmp/tally_dir"
-        # free_tries = 10
-        # base_delay_seconds = 15
-        # ramp_multiplier = 20.0
-        # even_deny_root = true
-    "#;
-        std::fs::write(&conf_file_path, toml_content).unwrap();
-
-        // Create PAM arguments
-        let args = [CStr::from_bytes_with_nul("preauth\0".as_bytes()).unwrap()].to_vec();
-        let flags: PamFlag = 0;
-
-        // Build settings from TOML
-        let result = Settings::build(
-            Some(User::new(9999, "test_user", 9999)),
-            &args,
-            flags,
-            Some(conf_file_path.clone()),
-            "test",
-        );
-
-        // Validate the result
-        assert!(result.is_ok());
-        let settings = result.unwrap();
-        // println!("{:?}", settings);
-        assert_eq!(settings.action, Some(Actions::PREAUTH));
-        assert_eq!(
-            settings.tally_dir,
-            PathBuf::from("/var/run/authramp")
-        );
-        assert_eq!(settings.free_tries, 6);
-        assert_eq!(settings.base_delay_seconds, 30);
-        assert_eq!(settings.ramp_multiplier, 50);
-        assert!(!settings.even_deny_root);
     }
 
     #[test]
     fn test_build_settings_missing_user() {
         let args = [CStr::from_bytes_with_nul("preauth\0".as_bytes()).unwrap()].to_vec();
         let flags: PamFlag = 0;
-        let result = Settings::build(None, &args, flags, None, "test");
+        let result = Settings::build(None, &args, flags, "test");
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), PamResultCode::PAM_SYSTEM_ERR);
     }

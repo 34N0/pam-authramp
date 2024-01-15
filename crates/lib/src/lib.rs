@@ -58,9 +58,9 @@ use std::cmp::min;
 use std::ffi::CStr;
 use std::thread::sleep;
 use users::get_user_by_name;
-use util::types::Actions;
-use util::settings::Settings;
 use util::log_info;
+use util::settings::Settings;
+use util::types::Actions;
 
 use tally::Tally;
 
@@ -93,7 +93,7 @@ impl PamHooks for Pamauthramp {
             match settings.get_action()? {
                 Actions::PREAUTH => {
                     // if account is locked then bounce
-                    if tally.failures_count > settings.free_tries {
+                    if tally.failures_count > settings.config.free_tries {
                         Err(bounce_auth(pamh, settings, tally))
                     } else {
                         Ok(PamResultCode::PAM_SUCCESS)
@@ -160,7 +160,7 @@ where
     ));
 
     // Read configuration file
-    let settings = Settings::build(user.clone(), args, flags, None, pam_hook_desc)?;
+    let settings = Settings::build(user.clone(), args, flags, pam_hook_desc)?;
 
     util::syslog::init_log(pamh, &settings)?;
 
@@ -225,11 +225,11 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
     };
 
     // ignore root except when configured
-    if user.uid().eq(&0) && !settings.even_deny_root {
+    if user.uid().eq(&0) && !settings.config.even_deny_root {
         return PamResultCode::PAM_SUCCESS;
     }
 
-    if tally.failures_count > settings.free_tries {
+    if tally.failures_count > settings.config.free_tries {
         if let Ok(Some(conv)) = pamh.get_item::<Conv>() {
             let delay = tally.get_delay(settings);
 

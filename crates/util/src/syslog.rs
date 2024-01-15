@@ -30,10 +30,10 @@
 //! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use log::LevelFilter;
-use sysinfo::{Pid, System};
-use syslog::{BasicLogger, Facility, Formatter3164};
 use pam::module::PamHandle;
 use pam::{constants::PamResultCode, items::Service};
+use sysinfo::{Pid, System};
+use syslog::{BasicLogger, Facility, Formatter3164};
 
 use crate::settings::Settings;
 
@@ -68,7 +68,7 @@ pub static mut SYSLOG_STATE: LogState = LogState {
 /// Returns Ok(()) on success, or Err(PamResultCode) on failure.
 ///
 /// # Errors
-/// 
+///
 /// Returns a `PamResultCode` error.
 pub fn init_log(pamh: &mut PamHandle, settings: &Settings) -> Result<(), PamResultCode> {
     unsafe {
