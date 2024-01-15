@@ -41,7 +41,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{settings::Settings, log_error, log_info, Actions};
+use util::settings::Settings;
+use util::types::Actions;
+use util::{log_error, log_info};
 use chrono::{DateTime, Duration, Utc};
 use pam::constants::PamResultCode;
 use users::User;
@@ -296,9 +298,7 @@ impl Tally {
 // Unit Tests
 #[cfg(test)]
 mod tests {
-    extern crate tempdir;
-
-    use self::tempdir::TempDir;
+    use tempdir::TempDir;
     use super::*;
     use std::fs;
     use users::User;

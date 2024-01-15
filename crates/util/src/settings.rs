@@ -28,12 +28,13 @@
 //! You should have received a copy of the GNU General Public License
 //! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{log_info, Actions};
 use pam::constants::{PamFlag, PamResultCode};
 use std::collections::HashMap;
 use std::ffi::CStr;
 use std::fs;
 use std::path::PathBuf;
+use crate::log_info;
+use crate::types::Actions;
 
 use users::User;
 
@@ -94,6 +95,10 @@ impl Settings {
     ///
     /// A `Result` containing the constructed `Settings` instance or a `PamResultCode`
     /// indicating an error during the construction process.
+    /// 
+    /// # Errors
+    /// 
+    /// Returns a `PamResultCode` error.
     pub fn build(
         user: Option<User>,
         args: &[&CStr],
@@ -139,6 +144,10 @@ impl Settings {
     ///
     /// A `Result` containing the PAM action (`Actions`) if available, or a `PamResultCode`
     /// aborting Pam Authentication if the action is not present.
+    ///
+    /// # Errors
+    /// 
+    /// Returns a `PamResultCode` error.
     pub fn get_action(&self) -> Result<Actions, PamResultCode> {
         self.action.ok_or(PamResultCode::PAM_ABORT)
     }
@@ -149,6 +158,10 @@ impl Settings {
     ///
     /// A `Result` containing a reference to the PAM user (`&User`) if available, or a `PamResultCode`
     /// indicating a `user_unknown` error if the user is not present.
+    ///
+    /// # Errors
+    /// 
+    /// Returns a `PamResultCode` error.
     pub fn get_user(&self) -> Result<&User, PamResultCode> {
         self.user.as_ref().ok_or_else(|| {
             log_info!("PAM_USER_UNKNOWN: Authentication failed because user is unknown",);
@@ -208,9 +221,7 @@ impl Settings {
 // Unit Tests
 #[cfg(test)]
 mod tests {
-    extern crate tempdir;
-    
-    use self::tempdir::TempDir;
+    use tempdir::TempDir;
     use super::*;
     use std::ffi::CStr;
     use users::User;

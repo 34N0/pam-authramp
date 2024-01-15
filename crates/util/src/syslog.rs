@@ -11,26 +11,6 @@
 //! `SYSLOG_STATE` to store the syslog state. The `init_log` function initializes the syslog logger,
 //! and the `syslog_info` and `syslog_error` macros are used for logging messages at different levels.
 //!
-//! # Examples
-//!
-//! Initializing syslog and logging an informational message:
-//!
-//! ```
-//! use pam::module::PamHandle;
-//! use crate::settings::Settings;
-//!
-//! let mut pamh = PamHandle::dummy();
-//! let settings = Settings::default();
-//!
-//! my_syslog::init_log(&mut pamh, &settings).unwrap();
-//! syslog_info!("This is an informational message");
-//! ```
-//!
-//! Logging an error message:
-//!
-//! ```
-//! syslog_error!("This is an error message");
-//! ```
 //! ## License
 //!
 //! pam-authramp
@@ -49,13 +29,9 @@
 //! You should have received a copy of the GNU General Public License
 //! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-extern crate log;
-extern crate sysinfo;
-extern crate syslog;
-
-use self::log::LevelFilter;
-use self::sysinfo::{Pid, System};
-use self::syslog::{BasicLogger, Facility, Formatter3164};
+use log::LevelFilter;
+use sysinfo::{Pid, System};
+use syslog::{BasicLogger, Facility, Formatter3164};
 use pam::module::PamHandle;
 use pam::{constants::PamResultCode, items::Service};
 
@@ -90,6 +66,10 @@ pub static mut SYSLOG_STATE: LogState = LogState {
 /// # Returns
 ///
 /// Returns Ok(()) on success, or Err(PamResultCode) on failure.
+///
+/// # Errors
+/// 
+/// Returns a `PamResultCode` error.
 pub fn init_log(pamh: &mut PamHandle, settings: &Settings) -> Result<(), PamResultCode> {
     unsafe {
         if !SYSLOG_STATE.logger_initialized {
@@ -134,18 +114,13 @@ pub fn init_log(pamh: &mut PamHandle, settings: &Settings) -> Result<(), PamResu
 ///
 /// This macro logs messages at the "info" level using the syslog logger.
 ///
-/// # Examples
-///
-/// ```
-/// log_info!("This is an informational message");
-/// ```
 #[macro_export]
 macro_rules! log_info {
     ($($arg:tt)*) => {
         {
             unsafe {
-                if $crate::utils::syslog::SYSLOG_STATE.logger_initialized {
-                    if let Some(ref pre_log) = $crate::utils::syslog::SYSLOG_STATE.pre_log {
+                if $crate::syslog::SYSLOG_STATE.logger_initialized {
+                    if let Some(ref pre_log) = $crate::syslog::SYSLOG_STATE.pre_log {
                         log::info!("{}: {}", pre_log, format_args!($($arg)*));
                     }
                 }
@@ -158,18 +133,13 @@ macro_rules! log_info {
 ///
 /// This macro logs messages at the "error" level using the syslog logger.
 ///
-/// # Examples
-///
-/// ```
-/// log_error!("This is an error message");
-/// ```
 #[macro_export]
 macro_rules! log_error {
     ($($arg:tt)*) => {
         {
             unsafe {
-                if $crate::utils::syslog::SYSLOG_STATE.logger_initialized {
-                    if let Some(ref pre_log) = $crate::utils::syslog::SYSLOG_STATE.pre_log {
+                if $crate::syslog::SYSLOG_STATE.logger_initialized {
+                    if let Some(ref pre_log) = $crate::syslog::SYSLOG_STATE.pre_log {
                         log::error!("{}: {}", pre_log, format_args!($($arg)*));
                     }
                 }
