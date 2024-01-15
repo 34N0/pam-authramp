@@ -95,6 +95,10 @@ impl Settings<'_> {
     ///
     /// A `Result` containing the constructed `Settings` instance or a `PamResultCode`
     /// indicating an error during the construction process.
+    /// 
+    /// # Errors
+    ///
+    /// Returns a PamResultCode error.
     pub fn build<'a>(
         user: Option<User>,
         args: &[&CStr],
@@ -140,6 +144,10 @@ impl Settings<'_> {
     ///
     /// A `Result` containing the PAM action (`Actions`) if available, or a `PamResultCode`
     /// aborting Pam Authentication if the action is not present.
+    ///
+    /// # Errors
+    ///
+    /// Returns a PamResultCode error.
     pub fn get_action(&self) -> Result<Actions, PamResultCode> {
         self.action.ok_or(PamResultCode::PAM_ABORT)
     }
@@ -150,6 +158,10 @@ impl Settings<'_> {
     ///
     /// A `Result` containing a reference to the PAM user (`&User`) if available, or a `PamResultCode`
     /// indicating a `user_unknown` error if the user is not present.
+    ///     
+    /// # Errors
+    ///
+    /// Returns a PamResultCode error.
     pub fn get_user(&self) -> Result<&User, PamResultCode> {
         self.user.as_ref().ok_or_else(|| {
             log_info!("PAM_USER_UNKNOWN: Authentication failed because user is unknown",);
