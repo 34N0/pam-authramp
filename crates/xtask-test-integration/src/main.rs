@@ -77,7 +77,7 @@ where
 fn main() -> anyhow::Result<()> {
     let sh = Shell::new()?;
 
-    cmd!(sh, "cargo build").run()?;
+    cmd!(sh, "cargo build -p lib").run()?;
     cmd!(
         sh,
         "sudo cp target/debug/libpam_authramp.so /lib64/security"

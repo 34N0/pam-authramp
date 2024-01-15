@@ -1,8 +1,9 @@
 [workspace]
 resolver= "2"
-members = ["crates/xtask-test-integration"]
+members = [ "crates/lib", "crates/cli","crates/xtask-test-integration"]
 
 [workspace.package]
+edition = "2021"
 version = "0.3.0"
 description = "The AuthRamp PAM module provides an account lockout mechanism based on the number of authentication failures."
 authors = ["34n0 <34n0@immerda.ch>"]
@@ -24,6 +25,7 @@ tempdir = "0.3.7"
 anyhow = "1.0.75"
 cli-xtask = { version = "0.8.0", features = ["main", "lib-crate"] }
 xshell = "0.2.5"
+clap = { version = "4.4.16", features = ["derive"] }
 
 [workspace.lints.clippy]
 pedantic = { level = "deny" }
@@ -31,24 +33,11 @@ cast_possible_truncation = "allow"
 
 [package]
 name = "pam-authramp"
+edition.workspace = true
 version.workspace = true
 description.workspace = true
 authors.workspace = true
 license.workspace = true
-
-[lib]
-name = "pam_authramp"
-path = "src/lib.rs"
-crate-type = ["cdylib"]
-
-[dependencies]
-chrono.workspace = true
-pam-bindings.workspace = true
-sysinfo.workspace = true
-syslog.workspace = true
-users.workspace = true
-log.workspace = true
-toml.workspace = true
 
 [dev-dependencies]
 pam-client.workspace = true
