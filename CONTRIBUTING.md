@@ -55,24 +55,20 @@ sudo dnf install pam-devel clang-devel
 ```
 ### testing
 #### Unit testings
-All modules are unit tested. Run unit tests inside the crate folder:
+All modules are unit tested. Run unit tests:
 ```console
-cargo test --lib
+cargo test -p lib
+cargo test -p cli
 ```
 #### Integration testing
 Edit the constants in the `test-pam-auth.rs` file to a user on your system. The test will build the library and use the systems pam service to test authentication. The test will run with evelated privileges. Run the integration tests:
 ```console
 cargo test-integration
 ```
-### Linting
-Fix:
-```console
-cargo lint
-```
 ### Building
 Build library:
 ```console
-cargo build --release
+cargo build -p lib -p cli --release
 ```
 ### Pull Requests
 

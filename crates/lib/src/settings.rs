@@ -207,6 +207,8 @@ impl Settings<'_> {
 // Unit Tests
 #[cfg(test)]
 mod tests {
+    extern crate tempdir;
+    
     use self::tempdir::TempDir;
     use super::*;
     use std::ffi::CStr;

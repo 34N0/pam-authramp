@@ -47,6 +47,7 @@ tempdir.workspace = true
 [package.metadata.generate-rpm]
 assets = [
     { source = "target/release/libpam_authramp.so", dest = "/usr/lib64/security/libpam_authramp.so", mode = "755" },
+    { source = "target/release/authramp", dest = "/usr/bin/authramp", mode = "755" },
     { source = "examples/system-auth/authramp.conf", dest = "/etc/security/authramp.conf", mode = "644" },
 ]
 
@@ -56,6 +57,7 @@ section = "utility"
 priority = "optional"
 assets = [
     ["target/release/libpam_authramp.so", "usr/lib64/security/", "755"],
+    ["target/release/authramp", "/usr/bin/authramp", "755"],
     ["examples/system-auth/authramp.conf", "/etc/security/authramp.conf", "644"],
 ]
 
