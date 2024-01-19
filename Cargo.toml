@@ -4,7 +4,7 @@ members = [ "crates/lib", "crates/cli", "crates/util", "crates/xtask-test-integr
 
 [workspace.package]
 edition = "2021"
-version = "0.9.1"
+version = "0.9.2"
 description = "The AuthRamp PAM module provides an account lockout mechanism based on the number of authentication failures."
 authors = ["34n0 <34n0@immerda.ch>"]
 license = "GPL-3.0"

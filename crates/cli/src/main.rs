@@ -63,7 +63,7 @@ const BANNER: &str = r"
 by 34n0@immerda.ch";
 
 #[derive(Debug)]
-struct ArCliError {
+pub struct ArCliError {
     message: String,
 }
 
@@ -74,7 +74,7 @@ impl fmt::Display for ArCliError {
 }
 
 #[derive(Debug)]
-struct ArCliSuccess {
+pub struct ArCliSuccess {
     message: String,
 }
 
@@ -85,7 +85,7 @@ impl fmt::Display for ArCliSuccess {
 }
 
 #[derive(Debug)]
-struct ArCliInfo {
+pub struct ArCliInfo {
     message: String,
 }
 
@@ -96,7 +96,7 @@ impl fmt::Display for ArCliInfo {
 }
 
 #[derive(Debug)]
-enum ArCliResult {
+pub enum ArCliResult {
     Success(Option<ArCliSuccess>),
     Info(ArCliInfo),
     Error(ArCliError),
