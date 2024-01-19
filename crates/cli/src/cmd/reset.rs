@@ -1,22 +1,33 @@
+use colored::Colorize;
 use std::{fs, path::PathBuf};
 use util::config::Config;
 
-use crate::{ArCliError, ArCliResult};
+use crate::{ArCliError, ArCliInfo, ArCliResult as Acr, ArCliSuccess};
 
-pub fn user(user: &str) -> ArCliResult {
+pub fn user(user: &str) -> Acr {
     let config = Config::load_file(None);
 
     let tally_path = config.tally_dir.join(user);
 
-    delete_tally(&tally_path)
+    delete_tally(&tally_path, user)
 }
 
-fn delete_tally(path: &PathBuf) -> ArCliResult {
+fn delete_tally(path: &PathBuf, user: &str) -> Acr {
     match fs::remove_file(path) {
-        Ok(()) => Ok(Some(String::from("File successfully deleted"))),
-        Err(e) => Err(ArCliError {
-            message: format!("Error deleting file: {e}").to_string(),
-        }),
+        Ok(()) => Acr::Success(Some(ArCliSuccess {
+            message: format!("tally reset for user: '{}'", user.yellow()),
+        })),
+        Err(e) => {
+            if e.kind().eq(&std::io::ErrorKind::NotFound) {
+                Acr::Info(ArCliInfo {
+                    message: format!("No tally found for user: '{}'", user.yellow()),
+                })
+            } else {
+                Acr::Error(ArCliError {
+                    message: format!("{e}").to_string(),
+                })
+            }
+        }
     }
 }
 
@@ -36,10 +47,9 @@ mod tests {
         fs::write(&temp_tally_path, "test tally").expect("Failed to create temporary file");
 
         // Load the Config into the reset_user function
-        let result = delete_tally(&temp_tally_path);
+        let _result = delete_tally(&temp_tally_path, "test");
 
         // Assert that the file is deleted successfully
-        assert!(result.is_ok());
         assert!(!temp_tally_path.exists(), "Tally File not deleted!");
     }
 }
