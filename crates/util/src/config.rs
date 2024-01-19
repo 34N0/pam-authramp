@@ -1,3 +1,38 @@
+//! # Configuration Module
+//!
+//! The `config` module provides functionality for loading and accessing configuration settings
+//! used by the `AuthRamp` PAM module and CLI binary.
+//!
+//! # Usage
+//!
+//! To use the `config` module, create a `Config` struct using the `load_file` function, providing
+//! the path to the configuration file. The `Config` struct allows accessing various configuration
+//! settings related to `AuthRamp` behavior.
+//!
+//! # Structs
+//!
+//! - [`Config`](struct.Config.html): Represents the configuration settings for `AuthRamp`.
+//! 
+//! ## License
+//!
+//! pam-authramp
+//! Copyright (C) 2023 github.com/34N0
+//!
+//! This program is free software: you can redistribute it and/or modify
+//! it under the terms of the GNU General Public License as published by
+//! the Free Software Foundation, either version 3 of the License, or
+//! (at your option) any later version.
+//!
+//! This program is distributed in the hope that it will be useful,
+//! but WITHOUT ANY WARRANTY; without even the implied warranty of
+//! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//! GNU General Public License for more details.
+//!
+//! You should have received a copy of the GNU General Public License
+//! along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+
 use std::{fs, path::PathBuf};
 
 const DEFAULT_CONFIG_FILE_PATH: &str = "/etc/security/authramp.conf";
