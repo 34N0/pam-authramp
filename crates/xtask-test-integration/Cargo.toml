@@ -1,6 +1,7 @@
 [package]
 name = "xtask-test-integration"
 edition.workspace = true
+version.workspace = true
 publish = false
 
 [dependencies]
