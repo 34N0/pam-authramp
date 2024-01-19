@@ -52,7 +52,7 @@ pub static mut SYSLOG_STATE: LogState = LogState {
     pre_log: None,
 };
 
-/// Initializes syslog logging.
+/// Initializes syslog logging for PAM services.
 ///
 /// This function should be called once from outside the module to set up the syslog logger.
 /// It initializes the logger with syslog settings, such as the facility, process name, etc.
@@ -70,7 +70,7 @@ pub static mut SYSLOG_STATE: LogState = LogState {
 /// # Errors
 ///
 /// Returns a `PamResultCode` error.
-pub fn init_log(pamh: &mut PamHandle, settings: &Settings) -> Result<(), PamResultCode> {
+pub fn init_pam_log(pamh: &mut PamHandle, settings: &Settings) -> Result<(), PamResultCode> {
     unsafe {
         if !SYSLOG_STATE.logger_initialized {
             let service_name = pamh.get_item::<Service>().ok().flatten().map_or_else(
@@ -104,6 +104,55 @@ pub fn init_log(pamh: &mut PamHandle, settings: &Settings) -> Result<(), PamResu
             SYSLOG_STATE.logger_initialized = true;
 
             let pre_log = format!("{}({}:{})", MODULE_NAME, service_name, settings.pam_hook);
+            SYSLOG_STATE.pre_log = Some(pre_log);
+        }
+        Ok(())
+    }
+}
+
+/// Initializes syslog logging for the cli.
+///
+/// This function should be called once from outside the module to set up the syslog logger.
+/// It initializes the logger with syslog settings, such as the facility, process name, etc.
+/// The resulting logger is used by the `syslog_info` and `syslog_error` macros.
+///
+///
+/// # Returns
+///
+/// Returns Ok(()) on success, or Err(PamResultCode) on failure.
+///
+/// # Errors
+///
+/// Returns a `PamResultCode` error.
+pub fn init_cli_log() -> Result<(), PamResultCode> {
+    unsafe {
+        if !SYSLOG_STATE.logger_initialized {
+            let mut sys = System::new_all();
+            sys.refresh_all();
+
+            let process_name = sys
+                .process(Pid::from_u32(std::process::id()))
+                .map_or("unknown-process".to_string(), |p| p.name().to_string());
+
+            let formatter = Formatter3164 {
+                facility: Facility::LOG_USER,
+                hostname: None,
+                process: process_name,
+                pid: 0,
+            };
+
+            let logger = match syslog::unix(formatter) {
+                Err(_) => return Err(PamResultCode::PAM_SYSTEM_ERR),
+                Ok(logger) => logger,
+            };
+
+            log::set_boxed_logger(Box::new(BasicLogger::new(logger)))
+                .map(|()| log::set_max_level(LevelFilter::Info))
+                .map_err(|_| PamResultCode::PAM_SYSTEM_ERR)?;
+
+            SYSLOG_STATE.logger_initialized = true;
+
+            let pre_log = format!("{}({})", MODULE_NAME, "CLI");
             SYSLOG_STATE.pre_log = Some(pre_log);
         }
         Ok(())

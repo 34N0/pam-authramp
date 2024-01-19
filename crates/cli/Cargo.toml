@@ -15,6 +15,11 @@ doc = false
 
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
+log.workspace = true
+util = { path = "../util" }
+
+[dev-dependencies]
+tempdir.workspace = true
 
 [lints]
 workspace = true

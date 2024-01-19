@@ -162,7 +162,7 @@ where
     // Read configuration file
     let settings = Settings::build(user.clone(), args, flags, pam_hook_desc)?;
 
-    util::syslog::init_log(pamh, &settings)?;
+    util::syslog::init_pam_log(pamh, &settings)?;
 
     // Get and Set tally
     let tally = Tally::new_from_tally_file(&settings)?;

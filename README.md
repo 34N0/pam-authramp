@@ -89,11 +89,15 @@ b : baseDelaySeconds
 delay = r * (f - f₀) * log(f - f₀) + b
 ```
 
-### tally file
-The tally file tracks failed attempts. Per default, it is stored in `/var/run/authramp/<user>`. To reset and unlock any user, simply delete the file.
+### Reset user
+The cli uses the reads the same configuration in `authramp.conf`
+To reset the user use the `authramp` command:
+```console
+sudo authramp reset --user <user>
+```
 
 ## Logging
-The module generates logs following the PAM module logging style. For instance, the logging entries created during integration tests serve as examples.
+The module and cli generate logs following the PAM module logging style. For instance, the logging entries created during integration tests serve as examples. 
 ```console
 Dec 25 01:48:03 fedora test_pam_auth-8[89228]: pam_authramp(test-authramp:auth): PAM_AUTH_ERR: Added tally (7 failures) for the "test_user" account. Account is locked until 2023-12-25 00:48:33.426241855 UTC.
 Dec 25 01:48:03 fedora test_pam_auth-8[89228]: pam_authramp(test-authramp:auth): PAM_AUTH_ERR: Account "test_user" is getting bounced. Account still locked until 2023-12-25 00:48:33.426241855 UTC

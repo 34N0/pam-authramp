@@ -49,8 +49,8 @@ impl Config {
 
         // Parse TOML content into a TomlTable
         let toml_table: Option<toml::value::Table> =
-        content.and_then(|c| toml::de::from_str(&c).ok());
-          
+            content.and_then(|c| toml::de::from_str(&c).ok());
+
         // Extract the "Config" section from the TOML table
         let config = toml_table.and_then(|t| t.get("Settings").cloned());
 
