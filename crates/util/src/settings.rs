@@ -35,7 +35,7 @@ use pam::constants::{PamFlag, PamResultCode};
 use std::collections::HashMap;
 use std::ffi::CStr;
 
-use users::User;
+use uzers::User;
 
 // Settings struct represents the configuration loaded from default values, configuration file and parameters
 #[derive(Debug)]
@@ -158,7 +158,7 @@ impl Settings<'_> {
 mod tests {
     use super::*;
     use std::ffi::CStr;
-    use users::User;
+    use uzers::User;
 
     #[test]
     fn test_default_settings() {
