@@ -1,6 +1,6 @@
 [workspace]
 resolver= "2"
-members = [ "crates/lib", "crates/cli","crates/xtask-test-integration"]
+members = [ "crates/lib", "crates/cli", "crates/util", "crates/xtask-test-integration" ]
 
 [workspace.package]
 edition = "2021"

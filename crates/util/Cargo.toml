@@ -1,5 +1,5 @@
 [package]
-name = "lib"
+name = "util"
 edition.workspace = true
 version.workspace = true
 description.workspace = true
@@ -9,18 +9,19 @@ homepage.workspace = true
 repository.workspace = true
 
 [lib]
-name = "pam_authramp"
+name = "util"
 path = "src/lib.rs"
-crate-type = ["cdylib"]
 doc = false
+
 
 [dependencies]
 chrono.workspace = true
 pam-bindings.workspace = true
+sysinfo.workspace = true
+syslog.workspace = true
+log.workspace = true
 users.workspace = true
 toml.workspace = true
-log.workspace = true
-util = { path = "../util" }
 
 [dev-dependencies]
 tempdir.workspace = true

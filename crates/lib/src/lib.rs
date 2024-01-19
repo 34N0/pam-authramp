@@ -47,13 +47,7 @@
 //! You should have received a copy of the GNU General Public License
 //! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-mod settings;
 mod tally;
-mod utils;
-
-extern crate chrono;
-extern crate pam;
-extern crate users;
 
 use chrono::{Duration, Utc};
 use pam::constants::{PamFlag, PamResultCode, PAM_ERROR_MSG};
@@ -64,18 +58,12 @@ use std::cmp::min;
 use std::ffi::CStr;
 use std::thread::sleep;
 use users::get_user_by_name;
+use util::types::Actions;
+use util::settings::Settings;
+use util::log_info;
 
-use settings::Settings;
 use tally::Tally;
 
-// Action argument defines position in PAM stack
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
-pub enum Actions {
-    PREAUTH,
-    AUTHSUCC,
-    #[default]
-    AUTHFAIL,
-}
 pub struct Pamauthramp;
 
 pam::pam_hooks!(Pamauthramp);
@@ -174,7 +162,7 @@ where
     // Read configuration file
     let settings = Settings::build(user.clone(), args, flags, None, pam_hook_desc)?;
 
-    utils::syslog::init_log(pamh, &settings)?;
+    util::syslog::init_log(pamh, &settings)?;
 
     // Get and Set tally
     let tally = Tally::new_from_tally_file(&settings)?;
