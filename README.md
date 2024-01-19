@@ -13,6 +13,12 @@ If you're a RPM distribution user, then then pam-authramp can be installed using
 curl -LO https://github.com/34N0/pam-authramp/releases/download/v0.9.1-beta/pam-authramp-0.9.1-1.x86_64.rpm
 sudo rpm -i pam-authramp-0.9.1-1.x86_64.rpm
 ```
+### COPR
+The module is released in a COPR repository:
+```bash
+sudo dnf copr enable 34n0s/pam-authramp
+sudo dnf install pam-authramp
+```
 ### Debian
 If you're a Debian user (or a user of a Debian derivative like Ubuntu), then pam-authramp can be installed using a binary .deb file provided in each [release](https://github.com/34N0/pam-authramp/releases).
 ```bash
