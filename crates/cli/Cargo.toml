@@ -16,6 +16,7 @@ doc = false
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
 log.workspace = true
+colored.workspace = true
 util = { path = "../util" }
 
 [dev-dependencies]
