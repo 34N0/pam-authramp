@@ -5,9 +5,9 @@ version.workspace = true
 publish = false
 
 [dependencies]
+anyhow.workspace = true
 cli-xtask.workspace = true
 xshell.workspace = true
-anyhow.workspace = true
 
 [lints]
 workspace = true

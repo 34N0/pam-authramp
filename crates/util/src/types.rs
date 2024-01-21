@@ -10,7 +10,7 @@
 //! # Enumerations
 //!
 //! - [`Actions`](enum.Actions.html): Represents different actions in the `AuthRamp` library.
-//! 
+//!
 //! ## License
 //!
 //! pam-authramp

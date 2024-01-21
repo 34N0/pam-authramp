@@ -12,7 +12,7 @@
 //! # Structs
 //!
 //! - [`Config`](struct.Config.html): Represents the configuration settings for `AuthRamp`.
-//! 
+//!
 //! ## License
 //!
 //! pam-authramp
@@ -31,9 +31,9 @@
 //! You should have received a copy of the GNU General Public License
 //! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-
 use std::{fs, path::PathBuf};
+
+use crate::log_info;
 
 const DEFAULT_CONFIG_FILE_PATH: &str = "/etc/security/authramp.conf";
 
@@ -65,11 +65,11 @@ impl Default for Config {
 }
 
 impl Config {
-    /// Loads configuration config from an INI file, returning a `Config` instance.
+    /// Loads configuration config from an TOML file, returning a `Config` instance.
     ///
     /// # Arguments
     ///
-    /// * `config_file`: An optional `PathBuf` specifying the path to the INI file. If
+    /// * `config_file`: An optional `PathBuf` specifying the path to the TOML file. If
     ///   not provided, the default configuration file path is used.
     ///
     /// # Returns
@@ -87,33 +87,43 @@ impl Config {
             content.and_then(|c| toml::de::from_str(&c).ok());
 
         // Extract the "Config" section from the TOML table
-        let config = toml_table.and_then(|t| t.get("Settings").cloned());
+        let config = toml_table.and_then(|t| t.get("Configuration").cloned());
 
         // Map the config to the Config struct
-        config
-            .map(|s| Config {
+        config.map_or_else(
+            || {
+                log_info!(
+                    "PAM_SYSTEM_ERR: Error parsing configuration file. Using default values."
+                );
+                Config::default()
+            },
+            |s| Config {
                 tally_dir: s
                     .get("tally_dir")
                     .and_then(|val| val.as_str().map(PathBuf::from))
                     .unwrap_or_else(|| Config::default().tally_dir),
+
                 free_tries: s
                     .get("free_tries")
                     .and_then(toml::Value::as_integer)
                     .map_or_else(|| Config::default().free_tries, |val| val as i32),
+
                 base_delay_seconds: s
                     .get("base_delay_seconds")
                     .and_then(toml::Value::as_integer)
                     .map_or_else(|| Config::default().base_delay_seconds, |val| val as i32),
+
                 ramp_multiplier: s
                     .get("ramp_multiplier")
                     .and_then(toml::Value::as_float)
                     .map_or_else(|| Config::default().ramp_multiplier, |val| val as i32),
+
                 even_deny_root: s
                     .get("even_deny_root")
                     .and_then(toml::Value::as_bool)
                     .unwrap_or_else(|| Config::default().even_deny_root),
-            })
-            .unwrap_or_default()
+            },
+        )
     }
 }
 
@@ -141,7 +151,7 @@ mod tests {
 
         // Create a TOML file with settings
         let toml_content = r#"
-        [Settings]
+        [Configuration]
         tally_dir = "/tmp/tally_dir"
         free_tries = 10
         base_delay_seconds = 15

@@ -16,12 +16,12 @@ doc = false
 
 [dependencies]
 chrono.workspace = true
+log.workspace = true
 pam-bindings.workspace = true
 sysinfo.workspace = true
 syslog.workspace = true
-log.workspace = true
-uzers.workspace = true
 toml.workspace = true
+uzers.workspace = true
 
 [dev-dependencies]
 tempdir.workspace = true

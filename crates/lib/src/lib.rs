@@ -12,12 +12,12 @@
 //!
 //! ## Configuration
 //!
-//! The behavior of the `AuthRamp` module is configurable through an INI file located at
+//! The behavior of the `AuthRamp` module is configurable through an TOML file located at
 //! `/etc/security/authramp.conf` by default. The configuration file can be customized with settings
 //! such as the tally directory, free tries threshold, base delay, and multiplier.
 //!
 //! ```ini
-//! [Settings]
+//! [Configuration]
 //! tally_dir = /var/run/authramp
 //! free_tries = 6
 //! base_delay_seconds = 30
@@ -57,10 +57,10 @@ use pam::pam_try;
 use std::cmp::min;
 use std::ffi::CStr;
 use std::thread::sleep;
-use uzers::get_user_by_name;
-use util::log_info;
 use util::settings::Settings;
 use util::types::Actions;
+use util::{log_error, log_info};
+use uzers::get_user_by_name;
 
 use tally::Tally;
 
@@ -252,13 +252,21 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
                 let capped_remaining_time = min(remaining_time, Duration::hours(24));
 
                 // Send a message to the conversation function
-                let _ = conv.send(
+                let conv_res = conv.send(
                     PAM_ERROR_MSG,
                     &format!(
                         "Account locked! Unlocking in {}.",
                         format_remaining_time(capped_remaining_time)
                     ),
                 );
+
+                // Log Conversation Error but continue loop
+                match conv_res {
+                    Ok(_) => (),
+                    Err(pam_code) => {
+                        log_error!("{:?}: Error starting PAM conversation.", pam_code);
+                    }
+                }
 
                 // Wait for one second
                 sleep(std::time::Duration::from_secs(1));
