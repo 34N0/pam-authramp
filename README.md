@@ -54,7 +54,7 @@ Create a configuration file under /etc/security/authramp.conf. This is an exampl
 # AuthRamp Configuration File
 # This file configures the behavior of the AuthRamp PAM module.
 #
-[Settings]
+[Configuration]
 # Directory where tally information is stored.
 # Each user has a separate file in this directory to track authentication failures.
 tally_dir = /var/run/authramp

@@ -1,14 +1,11 @@
 //! # Settings Module
 //!
 //! The `settings` module is responsible for managing configuration settings related to the
-//! authramp PAM module. It provides a structure `Settings` and functions to load configuration
-//! from an INI file, build settings based on user input, and set default values.
+//! authramp PAM module.
 //!
 //! ## Overview
 //!
 //! The `Settings` structure represents the configuration settings for the authramp PAM module.
-//! It includes fields such as `action`, `user`, `tally_dir`, `free_tries`, `base_delay_seconds`,
-//! and `ramp_multiplier`.
 //!
 //! ## License
 //!
@@ -72,7 +69,7 @@ impl Settings<'_> {
     ///   the PAM session.
     /// * `args`: A vector of `CStr` references representing the PAM module arguments.
     /// * `_flags`: PAM flags indicating the context of the PAM operation (unused).
-    /// * `config_file`: An optional `PathBuf` specifying the path to the INI file. If
+    /// * `config_file`: An optional `PathBuf` specifying the path to the TOML file. If
     ///   not provided, the default configuration file path is used.
     ///
     /// # Returns
@@ -89,7 +86,7 @@ impl Settings<'_> {
         _flags: PamFlag,
         pam_hook: &'a str,
     ) -> Result<Settings<'a>, PamResultCode> {
-        // Load INI file.
+        // Load TOML file.
         let mut settings = Settings::default();
 
         // create possible action collection

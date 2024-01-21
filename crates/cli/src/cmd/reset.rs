@@ -3,7 +3,7 @@
 //! The `reset` module provides functionality to reset the tally information for a user.
 //! It is used in the context of the `sm_authenticate` PAM hook when the `reset` command is specified.
 //! The tally information is stored in a file, and this module allows resetting the tally for a specific user.
-//! 
+//!
 //! ## License
 //!
 //! pam-authramp

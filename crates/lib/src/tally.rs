@@ -43,10 +43,10 @@ use std::{
 
 use chrono::{DateTime, Duration, Utc};
 use pam::constants::PamResultCode;
-use uzers::User;
 use util::settings::Settings;
 use util::types::Actions;
 use util::{log_error, log_info};
+use uzers::User;
 
 /// The `Tally` struct represents the account lockout information, including
 /// the number of authentication failures and the timestamp of the last failure.
@@ -179,7 +179,7 @@ impl Tally {
     /// PREAUTH is ignored;
     ///
     /// # Arguments
-    /// - `fails_section`: A reference to the "Fails" section of the INI file.
+    /// - `fails_section`: A reference to the "Fails" section of the TOML file.
     /// - `tally`: A mutable reference to the `Tally` struct.
     /// - `settings`: A reference to the `Settings` struct.
     ///

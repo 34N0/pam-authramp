@@ -203,7 +203,7 @@ mod test_pam_auth {
 
             // Set the custom tally_dir path in authramp.conf
             let config_content = format!(
-                "[Settings]\n\
+                "[Configuration]\n\
                 tally_dir = \"{}\"\n\
                 free_tries = 6\n\
                 base_delay_seconds = 30\n\

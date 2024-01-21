@@ -12,21 +12,21 @@ homepage = "https://github.com/34N0/pam-authramp/"
 repository = "https://github.com/34N0/pam-authramp/"
 
 [workspace.dependencies]
+anyhow = "1.0.75"
 chrono = "0.4.31"
+clap = { version = "4.4.16", features = ["derive"] }
+cli-xtask = { version = "0.8.0", features = ["main", "lib-crate"] }
+colored = "2.1.0"
+log = "0.4"
 pam-bindings = "0.1.1"
+pam-client = "0.5.0"
 sysinfo = "0.30.0"
 syslog = "6.1.0"
-uzers = "0.11.3"
-log = "0.4"
-toml = "0.8.8"
-pam-client = "0.5.0"
-tempfile = "3.8.1"
 tempdir = "0.3.7"
-anyhow = "1.0.75"
-cli-xtask = { version = "0.8.0", features = ["main", "lib-crate"] }
+tempfile = "3.8.1"
+toml = "0.8.8"
+uzers = "0.11.3"
 xshell = "0.2.5"
-clap = { version = "4.4.16", features = ["derive"] }
-colored = "2.1.0"
 
 [workspace.lints.clippy]
 pedantic = { level = "deny" }
@@ -42,8 +42,8 @@ license.workspace = true
 
 [dev-dependencies]
 pam-client.workspace = true
-tempfile.workspace = true
 tempdir.workspace = true
+tempfile.workspace = true
 
 [package.metadata.generate-rpm]
 assets = [

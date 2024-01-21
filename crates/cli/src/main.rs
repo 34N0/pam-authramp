@@ -26,7 +26,7 @@
 //! - [`ArCliResult`](struct.ArCliResult.html): Represents the result of a command execution in the `AuthRamp` CLI.
 //! - [`Cli`](struct.Cli.html): Represents the main CLI struct.
 //! - [`Command`](enum.Command.html): Represents the available subcommands.
-//! 
+//!
 //! ## License
 //!
 //! pam-authramp
