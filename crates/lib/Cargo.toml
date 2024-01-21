@@ -17,7 +17,7 @@ doc = false
 [dependencies]
 chrono.workspace = true
 pam-bindings.workspace = true
-users.workspace = true
+uzers.workspace = true
 toml.workspace = true
 log.workspace = true
 util = { path = "../util" }

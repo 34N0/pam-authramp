@@ -43,7 +43,7 @@ use std::{
 
 use chrono::{DateTime, Duration, Utc};
 use pam::constants::PamResultCode;
-use users::User;
+use uzers::User;
 use util::settings::Settings;
 use util::types::Actions;
 use util::{log_error, log_info};
@@ -301,7 +301,7 @@ mod tests {
     use super::*;
     use std::fs;
     use tempdir::TempDir;
-    use users::User;
+    use uzers::User;
 
     use util::config::Config;
 

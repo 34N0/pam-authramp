@@ -57,7 +57,7 @@ use pam::pam_try;
 use std::cmp::min;
 use std::ffi::CStr;
 use std::thread::sleep;
-use users::get_user_by_name;
+use uzers::get_user_by_name;
 use util::log_info;
 use util::settings::Settings;
 use util::types::Actions;
