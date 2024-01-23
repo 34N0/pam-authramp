@@ -186,7 +186,7 @@ fn format_remaining_time(remaining_time: Duration) -> String {
             } else {
                 unit
             };
-            formatted_time.push_str(&format!("{value} {unit_str} "));
+            formatted_time.push_str(&format!("{value} {unit_str}"));
         }
     }
 
