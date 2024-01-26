@@ -110,7 +110,7 @@ impl Settings<'_> {
         settings.action.get_or_insert(Actions::AUTHSUCC);
 
         // get user
-        settings.user = Some(user.ok_or(PamResultCode::PAM_SYSTEM_ERR)?);
+        settings.user = Some(user.ok_or(PamResultCode::PAM_USER_UNKNOWN)?);
 
         // pam hook
         settings.pam_hook = pam_hook;
