@@ -104,7 +104,7 @@ impl PamHooks for Pamauthramp {
                 Actions::AUTHSUCC => Err(PamResultCode::PAM_AUTH_ERR),
             }
         })
-        .unwrap_or(PamResultCode::PAM_SUCCESS)
+        .unwrap_or_else(|e| e)
     }
 
     /// Handles the `acct_mgmt` PAM hook, which is invoked during the account management process.
