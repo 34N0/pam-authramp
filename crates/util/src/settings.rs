@@ -183,6 +183,6 @@ mod tests {
         let flags: PamFlag = 0;
         let result = Settings::build(None, &args, flags, "test");
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), PamResultCode::PAM_SYSTEM_ERR);
+        assert_eq!(result.unwrap_err(), PamResultCode::PAM_USER_UNKNOWN);
     }
 }

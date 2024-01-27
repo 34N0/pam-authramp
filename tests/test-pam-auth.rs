@@ -113,8 +113,9 @@ mod test_pam_auth {
             assert!(tally_file_path.exists(), "Tally file not created");
 
             // Expect tally count
-            let ini_content = fs::read_to_string(tally_file_path).unwrap();
-            assert!(ini_content.contains(&format!("count = {total_tries}")));
+            let toml_content = fs::read_to_string(tally_file_path).unwrap();
+            println!("{toml_content}");
+            assert!(toml_content.contains(&format!("count = {total_tries}")));
         });
     }
 
@@ -132,9 +133,9 @@ mod test_pam_auth {
             assert!(tally_file_path.exists(), "Tally file not created");
 
             // Expect tally count to increase
-            let ini_content = fs::read_to_string(&tally_file_path).unwrap();
+            let toml_content = fs::read_to_string(&tally_file_path).unwrap();
             assert!(
-                ini_content.contains("count = 1"),
+                toml_content.contains("count = 1"),
                 "Expected tally count to increase"
             );
 
@@ -148,9 +149,9 @@ mod test_pam_auth {
                 .expect("Account management failed");
 
             // Expect tally count to decrease
-            let ini_content = fs::read_to_string(&tally_file_path).unwrap();
+            let toml_content = fs::read_to_string(&tally_file_path).unwrap();
             assert!(
-                ini_content.contains("count = 0"),
+                toml_content.contains("count = 0"),
                 "Expected tally count = 0"
             );
         });

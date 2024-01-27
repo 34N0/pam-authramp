@@ -17,6 +17,7 @@ chrono = "0.4.31"
 clap = { version = "4.4.16", features = ["derive"] }
 cli-xtask = { version = "0.8.0", features = ["main", "lib-crate"] }
 colored = "2.1.0"
+libc = "0.2.152"
 log = "0.4"
 pam-bindings = "0.1.1"
 pam-client = "0.5.0"
@@ -64,3 +65,5 @@ assets = [
 
 [lints]
 workspace = true
+
+[dependencies]

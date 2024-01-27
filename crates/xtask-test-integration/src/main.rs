@@ -1,4 +1,4 @@
-//! # XTask Module
+//! # `XTask` Module
 //!
 //! The `xtask` module provides a set of development tasks and commands for managing
 //! the `pam-authramp` project during development. It utilizes the `xshell` crate for
