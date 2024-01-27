@@ -110,7 +110,7 @@ impl Settings<'_> {
         settings.action.get_or_insert(Actions::AUTHSUCC);
 
         // get user
-        settings.user = Some(user.ok_or(PamResultCode::PAM_SYSTEM_ERR)?);
+        settings.user = Some(user.ok_or(PamResultCode::PAM_USER_UNKNOWN)?);
 
         // pam hook
         settings.pam_hook = pam_hook;
@@ -183,6 +183,6 @@ mod tests {
         let flags: PamFlag = 0;
         let result = Settings::build(None, &args, flags, "test");
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), PamResultCode::PAM_SYSTEM_ERR);
+        assert_eq!(result.unwrap_err(), PamResultCode::PAM_USER_UNKNOWN);
     }
 }

@@ -38,6 +38,7 @@
 
 use std::{
     fs,
+    os::unix::fs::{chown, MetadataExt, PermissionsExt},
     path::{Path, PathBuf},
 };
 
@@ -111,7 +112,7 @@ impl Tally {
 
         if tally_file.exists() {
             Self::load_tally_from_file(&mut tally, user, &tally_file, settings)?;
-        } else {
+        } else if settings.action == Some(Actions::AUTHFAIL) {
             Self::create_tally_file(&mut tally, &tally_file, settings)?;
         };
 
@@ -207,8 +208,8 @@ impl Tally {
                 // Write the updated values back to the file
                 let toml_str = format!("[Fails]\ncount = {}", tally.failures_count);
                 std::fs::write(tally_file, toml_str).map_err(|e| {
-                    log_error!("PAM_SYSTEM_ERR: Error resetting tally: {}", e);
-                    PamResultCode::PAM_SYSTEM_ERR
+                    log_error!("PAM_PERM_DENIED: Error resetting tally: {}", e);
+                    PamResultCode::PAM_PERM_DENIED
                 })?;
 
                 // log account unlock
@@ -243,8 +244,8 @@ impl Tally {
                     tally.unlock_instant.unwrap()
                 );
                 std::fs::write(tally_file, toml_str).map_err(|e| {
-                    log_error!("PAM_SYSTEM_ERR: Error writing tally file: {}", e);
-                    PamResultCode::PAM_SYSTEM_ERR
+                    log_error!("PAM_PERM_DENIED: Error writing tally file: {}", e);
+                    PamResultCode::PAM_PERM_DENIED
                 })?;
 
                 if tally.failures_count > settings.config.free_tries {
@@ -276,20 +277,35 @@ impl Tally {
         _settings: &Settings,
     ) -> Result<(), PamResultCode> {
         fs::create_dir_all(tally_file.parent().unwrap()).map_err(|e| {
-            log_error!("PAM_SYSTEM_ERR: Error creating tally file: {}", e);
-            PamResultCode::PAM_SYSTEM_ERR
+            log_error!("PAM_PERM_DENIED: Error creating tally file: {}", e);
+            PamResultCode::PAM_PERM_DENIED
         })?;
 
+        // Write the TOML string to disk
         let toml_str = format!(
             "[Fails]\ncount = {}\ninstant = \"{}\"",
-            tally.failures_count, tally.failure_instant
+            tally.failures_count + 1,
+            tally.failure_instant
         );
 
-        // Write the TOML string to disk
         std::fs::write(tally_file, toml_str).map_err(|e| {
             log_error!("PAM_SYSTEM_ERR: Error writing tally file: {}", e);
             PamResultCode::PAM_SYSTEM_ERR
         })?;
+
+        //  set file permissions
+        fs::set_permissions(tally_file, fs::Permissions::from_mode(0o600))
+            .map_err(|_e| PamResultCode::PAM_SYSTEM_ERR)?;
+
+        // get created tally file meta
+        let tally_file_meta =
+            fs::metadata(tally_file).map_err(|_e| PamResultCode::PAM_SYSTEM_ERR)?;
+
+        // set tally file owner
+        let uid = unsafe { libc::getuid() };
+        if tally_file_meta.uid() != uid {
+            chown(tally_file, Some(uid), Some(uid)).map_err(|_e| PamResultCode::PAM_SYSTEM_ERR)?;
+        }
 
         Ok(())
     }
@@ -363,13 +379,16 @@ mod tests {
 
         // Create settings and call open
         let settings = Settings {
-            user: Some(User::new(9999, "test_user_b", 9999)),
+            user: Some(User::new(1000, "test_user_b", 1000)),
+            action: Some(Actions::AUTHFAIL),
             config,
             ..Default::default()
         };
 
         // Test: Open nonexistent tally file
         let result = Tally::new_from_tally_file(&settings);
+
+        println!("{result:?}");
 
         // Check if the Tally struct is created with default values
         assert!(result.is_ok());
@@ -381,7 +400,7 @@ mod tests {
         let toml_content = fs::read_to_string(tally_file_path).unwrap();
         // println!("{}", &toml_content);
         assert!(toml_content.contains("[Fails]"));
-        assert!(toml_content.contains("count = 0"));
+        assert!(toml_content.contains("count = 1"));
         assert!(!toml_content.contains("unlock_instant = "));
     }
 
