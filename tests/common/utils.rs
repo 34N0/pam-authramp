@@ -68,7 +68,7 @@ pub const PAM_SRV: &str = "test-authramp";
 fn create_pam_service_file() -> io::Result<()> {
     let mut file = File::create(PathBuf::from(SRV_DIR).join(PAM_SRV))?;
 
-    let content = "auth        required                                     libpam_authramp.so preauth \n\
+   let content = "auth        required                                     libpam_authramp.so preauth \n\
                   auth        sufficient                                   pam_unix.so nullok \n\
                   auth        [default=die]                                libpam_authramp.so authfail \n\
                   account     required                                     libpam_authramp.so";
