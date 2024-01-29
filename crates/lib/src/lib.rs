@@ -265,6 +265,7 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
             // Wait for one second
             sleep(std::time::Duration::from_secs(1));
             // }
+            return PamResultCode::PAM_AUTH_ERR
         }
     }
     PamResultCode::PAM_SUCCESS
