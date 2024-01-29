@@ -50,7 +50,7 @@
 mod tally;
 
 use chrono::{Duration, Utc};
-use pam::constants::{PamFlag, PamResultCode, PAM_ERROR_MSG};
+use pam::constants::{PamFlag, PamResultCode, PAM_TEXT_INFO};
 use pam::conv::Conv;
 use pam::module::{PamHandle, PamHooks};
 use pam::pam_try;
@@ -91,14 +91,7 @@ impl PamHooks for Pamauthramp {
         init_authramp(pamh, &args, flags, "auth", |pamh, settings, tally| {
             // match action parameter
             match settings.get_action()? {
-                Actions::PREAUTH => {
-                    // if account is locked then bounce
-                    if tally.failures_count > settings.config.free_tries {
-                        Err(bounce_auth(pamh, settings, tally))
-                    } else {
-                        Ok(PamResultCode::PAM_SUCCESS)
-                    }
-                }
+                Actions::PREAUTH => Ok(bounce_auth(pamh, settings, tally)),
                 // bounce if called with authfail
                 Actions::AUTHFAIL => Err(bounce_auth(pamh, settings, tally)),
                 Actions::AUTHSUCC => Err(PamResultCode::PAM_AUTH_ERR),
@@ -244,39 +237,35 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
                 unlock_instant,
             );
 
-            while Utc::now() < unlock_instant {
-                // Calculate remaining time until unlock
-                let remaining_time = unlock_instant - Utc::now();
+            // disable loop for now (#48, #50)
+            // while Utc::now() < unlock_instant {
+            // Calculate remaining time until unlock
+            let remaining_time = unlock_instant - Utc::now();
 
-                // Cap remaining time at 24 hours
-                let capped_remaining_time = min(remaining_time, Duration::hours(24));
+            // Cap remaining time at 24 hours
+            let capped_remaining_time = min(remaining_time, Duration::hours(24));
 
-                // Send a message to the conversation function
-                let conv_res = conv.send(
-                    PAM_ERROR_MSG,
-                    &format!(
-                        "Account locked! Unlocking in {}.",
-                        format_remaining_time(capped_remaining_time)
-                    ),
-                );
+            // Send a message to the conversation function
+            let conv_res = conv.send(
+                PAM_TEXT_INFO,
+                &format!(
+                    "Account locked! Unlocking in {}.",
+                    format_remaining_time(capped_remaining_time)
+                ),
+            );
 
-                // Log Conversation Error but continue loop
-                match conv_res {
-                    Ok(_) => (),
-                    Err(pam_code) => {
-                        log_error!("{:?}: Error starting PAM conversation.", pam_code);
-                    }
+            // Log Conversation Error but continue loop
+            match conv_res {
+                Ok(_) => (),
+                Err(pam_code) => {
+                    log_error!("{:?}: Error starting PAM conversation.", pam_code);
                 }
-
-                // Wait for one second
-                sleep(std::time::Duration::from_secs(1));
             }
 
-            // Account is now unlocked, continue with PAM_SUCCESS
-            return PamResultCode::PAM_SUCCESS;
+            // Wait for one second
+            sleep(std::time::Duration::from_secs(1));
+            // }
         }
     }
-
-    // Account is not locked or an error occurred, return PAM_AUTH_ERR
-    PamResultCode::PAM_AUTH_ERR
+    PamResultCode::PAM_SUCCESS
 }
