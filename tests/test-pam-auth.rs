@@ -55,6 +55,7 @@ mod test_pam_auth {
 
     use std::fs;
     use std::path::Path;
+    use std::thread::sleep;
     use tempfile::TempDir;
 
     use crate::common::utils::get_pam_context;
@@ -192,6 +193,24 @@ mod test_pam_auth {
             assert!(
                 log_str.contains(bounce_message),
                 "Conversation log does not contain expected bounce message"
+            );
+
+            sleep(std::time::Duration::from_secs(30));
+
+            ctx = get_pam_context(USER_NAME, USER_PWD);
+
+            // Expect an error during authentication (invalid credentials)
+            let auth_result = ctx.authenticate(Flag::NONE);
+            assert!(auth_result.is_ok(), "Authentication failed!");
+
+            ctx.acct_mgmt(Flag::NONE)
+                .expect("Account management failed");
+
+            // Expect tally count to decrease
+            let toml_content = fs::read_to_string(&tally_file_path).unwrap();
+            assert!(
+                toml_content.contains("count = 0"),
+                "Expected tally count = 0"
             );
         });
     }

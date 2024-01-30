@@ -196,6 +196,7 @@ impl Tally {
         match settings.get_action()? {
             Actions::PREAUTH => Ok(()),
             Actions::AUTHSUCC => {
+                log_error!("{}", format!("asdf: {:?}", settings));
                 // total failures for logging
                 let total_failures = tally.failures_count;
 
