@@ -238,34 +238,34 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
             );
 
             // disable loop for now (#48, #50)
-            // while Utc::now() < unlock_instant {
-            // Calculate remaining time until unlock
-            let remaining_time = unlock_instant - Utc::now();
+            if Utc::now() < unlock_instant {
+                // Calculate remaining time until unlock
+                let remaining_time = unlock_instant - Utc::now();
 
-            // Cap remaining time at 24 hours
-            let capped_remaining_time = min(remaining_time, Duration::hours(24));
+                // Cap remaining time at 24 hours
+                let capped_remaining_time = min(remaining_time, Duration::hours(24));
 
-            // Send a message to the conversation function
-            let conv_res = conv.send(
-                PAM_TEXT_INFO,
-                &format!(
-                    "Account locked! Unlocking in {}.",
-                    format_remaining_time(capped_remaining_time)
-                ),
-            );
+                // Send a message to the conversation function
+                let conv_res = conv.send(
+                    PAM_TEXT_INFO,
+                    &format!(
+                        "Account locked! Unlocking in {}.",
+                        format_remaining_time(capped_remaining_time)
+                    ),
+                );
 
-            // Log Conversation Error but continue loop
-            match conv_res {
-                Ok(_) => (),
-                Err(pam_code) => {
-                    log_error!("{:?}: Error starting PAM conversation.", pam_code);
+                // Log Conversation Error but continue loop
+                match conv_res {
+                    Ok(_) => (),
+                    Err(pam_code) => {
+                        log_error!("{:?}: Error starting PAM conversation.", pam_code);
+                    }
                 }
-            }
 
-            // Wait for one second
-            sleep(std::time::Duration::from_secs(1));
-            // }
-            return PamResultCode::PAM_AUTH_ERR
+                // Wait for one second
+                sleep(std::time::Duration::from_secs(1));
+            }
+            return PamResultCode::PAM_AUTH_ERR;
         }
     }
     PamResultCode::PAM_SUCCESS
