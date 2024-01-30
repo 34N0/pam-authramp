@@ -56,7 +56,6 @@ use pam::module::{PamHandle, PamHooks};
 use pam::pam_try;
 use std::cmp::min;
 use std::ffi::CStr;
-use std::thread::sleep;
 use util::settings::Settings;
 use util::types::Actions;
 use util::{log_error, log_info};
@@ -263,9 +262,9 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
                 }
 
                 // Wait for one second
-                sleep(std::time::Duration::from_secs(1));
+                // sleep(std::time::Duration::from_secs(1));
+                return PamResultCode::PAM_AUTH_ERR;
             }
-            return PamResultCode::PAM_AUTH_ERR;
         }
     }
     PamResultCode::PAM_SUCCESS
