@@ -96,10 +96,25 @@ delay = r * (f - f₀) * log(f - f₀) + b
 ```
 
 ### Reset user
-The cli uses the reads the same configuration in `authramp.conf`
-To reset the user use the `authramp` command:
+The cli uses the reads the same configuration in `authramp.conf`. 
 ```console
-sudo authramp reset --user <user>
+
+ █████ ██    ████████████   ████████  █████ ███    █████████  
+██   ████    ██   ██   ██   ████   ████   ██████  ██████   ██ 
+█████████    ██   ██   █████████████ █████████ ████ ████████  
+██   ████    ██   ██   ██   ████   ████   ████  ██  ████      
+██   ██ ██████    ██   ██   ████   ████   ████      ████
+
+by 34n0@immerda.ch
+
+Usage: authramp [COMMAND]
+
+Commands:
+  reset  Reset a locked PAM user
+  help   Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help  Print help
 ```
 
 ## Logging
