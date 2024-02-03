@@ -1,6 +1,6 @@
 pub mod conv;
-pub mod macros;
 pub mod items;
+pub mod macros;
 
 use libc::c_char;
 use std::ffi::{CStr, CString};
@@ -27,6 +27,25 @@ pub enum PamResultCode {
     PAM_ABORT = 26,
 }
 
+pub enum LogLevel {
+    /// system is unusable, corresponds to LOG_EMERG
+    Emergency = 0,
+    /// action must be taken immediately, corresponds to LOG_ALERT
+    Alert = 1,
+    /// critical conditions, corresponds to LOG_CRIT
+    Critical = 2,
+    /// error conditions, corresponds to LOG_ERR
+    Error = 3,
+    /// warning conditions, corresponds to LOG_WARN
+    Warning = 4,
+    /// normal, but significant, condition, corresponds to LOG_NOTICE
+    Notice = 5,
+    /// informational message, corresponds to LOG_INFO
+    Info = 6,
+    /// debug-level message, corresponds to LOG_DEBUG
+    Debug = 7,
+}
+
 /// Opaque type, used as a pointer when making pam API calls.
 ///
 /// A module is invoked via an external function such as `pam_sm_authenticate`.
@@ -49,6 +68,13 @@ extern "C" {
         pamh: *const PamHandle,
         item_type: items::ItemType,
         item: &mut *const libc::c_void,
+    ) -> PamResultCode;
+
+    fn pam_syslog(
+        pamh: *const PamHandle,
+        priority: libc::c_int,
+        format: *const c_char,
+        ...
     ) -> PamResultCode;
 }
 
@@ -113,7 +139,21 @@ impl PamHandle {
         if PamResultCode::PAM_SUCCESS == res {
             Ok(item)
         } else {
-            println!("hi");
+            Err(res)
+        }
+    }
+
+    /// Log a message with the specified level to the syslog.
+    ///
+    /// This method wraps pam_syslog, which prefixes the message with a string indicating
+    /// the relevant PAM context.
+    pub fn log(&self, level: LogLevel, message: String) -> PamResult<()> {
+        let percent_s = CString::new("%s").map_err(|_| PamResultCode::PAM_SYSTEM_ERR)?;
+        let message = CString::new(message).map_err(|_| PamResultCode::PAM_SYSTEM_ERR)?;
+        let res = unsafe { pam_syslog(self, level as i32, percent_s.as_ptr(), message.as_ptr()) };
+        if PamResultCode::PAM_SUCCESS == res {
+            Ok(())
+        } else {
             Err(res)
         }
     }
