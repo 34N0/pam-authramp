@@ -49,7 +49,7 @@ use clap::{Parser, Subcommand};
 use cmd::reset;
 use colored::Colorize;
 use std::fmt;
-use util::{log_error, log_info, syslog};
+use common::{log_error, log_info, util::syslog};
 mod cmd;
 
 const BANNER: &str = r" 

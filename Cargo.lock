@@ -280,9 +280,9 @@ version = "0.9.9"
 dependencies = [
  "clap",
  "colored",
+ "common",
  "log",
  "tempdir",
- "util",
 ]
 
 [[package]]
@@ -344,6 +344,20 @@ checksum = "cbf2150cce219b664a8a70df7a1f933836724b503f8a413af9365b4dcc4d90b8"
 dependencies = [
  "lazy_static",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "common"
+version = "0.9.9"
+dependencies = [
+ "chrono",
+ "log",
+ "pam-bindings",
+ "sysinfo",
+ "syslog",
+ "tempdir",
+ "toml",
+ "uzers",
 ]
 
 [[package]]
@@ -556,12 +570,12 @@ name = "lib"
 version = "0.9.9"
 dependencies = [
  "chrono",
+ "common",
  "libc",
  "log",
  "pam-bindings",
  "tempdir",
  "toml",
- "util",
  "uzers",
 ]
 
@@ -1276,20 +1290,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "711b9620af191e0cdc7468a8d14e709c3dcdb115b36f838e601583af800a370a"
 
 [[package]]
-name = "util"
-version = "0.9.9"
-dependencies = [
- "chrono",
- "log",
- "pam-bindings",
- "sysinfo",
- "syslog",
- "tempdir",
- "toml",
- "uzers",
-]
-
-[[package]]
 name = "uzers"
 version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1582,7 +1582,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7e2c411759b501fb9501aac2b1b2d287a6e93e5bdcf13c25306b23e1b716dd0e"
 
 [[package]]
-name = "xtask-test-integration"
+name = "xtask-integration-test"
 version = "0.9.9"
 dependencies = [
  "anyhow",

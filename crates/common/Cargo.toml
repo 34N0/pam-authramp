@@ -1,5 +1,5 @@
 [package]
-name = "util"
+name = "common"
 edition.workspace = true
 version.workspace = true
 description.workspace = true
@@ -9,7 +9,7 @@ homepage.workspace = true
 repository.workspace = true
 
 [lib]
-name = "util"
+name = "common"
 path = "src/lib.rs"
 doc = false
 

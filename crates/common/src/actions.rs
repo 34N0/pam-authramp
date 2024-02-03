@@ -30,10 +30,9 @@
 //! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // Action argument defines position in PAM stack
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Actions {
     PREAUTH,
     AUTHSUCC,
-    #[default]
     AUTHFAIL,
 }

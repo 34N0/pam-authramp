@@ -24,7 +24,7 @@
 
 use colored::Colorize;
 use std::{fs, path::PathBuf};
-use util::config::Config;
+use common::config::Config;
 
 use crate::{ArCliError, ArCliInfo, ArCliResult as Acr, ArCliSuccess};
 

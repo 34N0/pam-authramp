@@ -64,7 +64,7 @@ cargo test -p util
 #### Integration testing
 Edit the constants in the `test-pam-auth.rs` file to a user on your system. The test will build the library and use the systems pam service to test authentication. The test will run with evelated privileges. Run the integration tests:
 ```console
-cargo test-integration
+cargo integration-test
 ```
 ### Building
 Build library:

@@ -27,7 +27,7 @@
 
 use crate::config::Config;
 use crate::log_info;
-use crate::types::Actions;
+use crate::actions::Actions;
 use pam::constants::{PamFlag, PamResultCode};
 use std::collections::HashMap;
 use std::ffi::CStr;

@@ -44,9 +44,9 @@ use std::{
 
 use chrono::{DateTime, Duration, Utc};
 use pam::constants::PamResultCode;
-use util::settings::Settings;
-use util::types::Actions;
-use util::{log_error, log_info};
+use common::settings::Settings;
+use common::actions::Actions;
+use common::{log_error, log_info};
 use uzers::User;
 
 /// The `Tally` struct represents the account lockout information, including
@@ -320,7 +320,7 @@ mod tests {
     use tempdir::TempDir;
     use uzers::User;
 
-    use util::config::Config;
+    use common::config::Config;
 
     #[test]
     fn test_open_existing_tally_file() {

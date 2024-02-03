@@ -1,6 +1,6 @@
 //! # `AuthRamp` Utility Crate
 //!
-//! The `util` crate provides utility modules and functionality used across the `AuthRamp` library,
+//! The `common` crate provides types, utility modules and functionality used across the `AuthRamp` library,
 //! including configuration management, settings handling, syslog initialization, and custom types.
 //!
 //! # Modules
@@ -48,5 +48,5 @@
 
 pub mod config;
 pub mod settings;
-pub mod syslog;
-pub mod types;
+pub mod util;
+pub mod actions;
