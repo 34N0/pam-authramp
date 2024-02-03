@@ -50,15 +50,15 @@
 mod tally;
 
 use chrono::{Duration, Utc};
+use common::actions::Actions;
+use common::settings::Settings;
+use common::{log_error, log_info};
 use pam::constants::{PamFlag, PamResultCode, PAM_TEXT_INFO};
 use pam::conv::Conv;
 use pam::module::{PamHandle, PamHooks};
 use pam::pam_try;
 use std::cmp::min;
 use std::ffi::CStr;
-use util::settings::Settings;
-use util::types::Actions;
-use util::{log_error, log_info};
 use uzers::get_user_by_name;
 
 use tally::Tally;
@@ -154,7 +154,7 @@ where
     // Read configuration file
     let settings = Settings::build(user.clone(), args, flags, pam_hook_desc)?;
 
-    util::syslog::init_pam_log(pamh, &settings)?;
+    common::util::syslog::init_pam_log(pamh, &settings)?;
 
     // Get and Set tally
     let tally = Tally::new_from_tally_file(&settings)?;

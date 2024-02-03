@@ -1,15 +1,12 @@
-//! # Types Module
+//! # `AuthRamp` Util Crate
 //!
-//! The `types` module defines custom types and enumerations used across the `AuthRamp` library.
-//! It includes types such as `Actions` and other utility types.
+//! General utilities.
 //!
-//! # Usage
+//! ## `syslog`
 //!
-//! To use the `types` module, import the necessary types into your code and use them as needed.
-//!
-//! # Enumerations
-//!
-//! - [`Actions`](enum.Actions.html): Represents different actions in the `AuthRamp` library.
+//! The `syslog` module provides functionality for initializing syslog logging in both the PAM module
+//! and the CLI binary. It ensures that log messages are sent to the appropriate syslog facility,
+//! making it easy to monitor `AuthRamp` activity.
 //!
 //! ## License
 //!
@@ -29,11 +26,4 @@
 //! You should have received a copy of the GNU General Public License
 //! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-// Action argument defines position in PAM stack
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
-pub enum Actions {
-    PREAUTH,
-    AUTHSUCC,
-    #[default]
-    AUTHFAIL,
-}
+pub mod syslog;

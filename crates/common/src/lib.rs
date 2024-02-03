@@ -1,6 +1,6 @@
-//! # `AuthRamp` Utility Crate
+//! # `AuthRamp` Common Crate
 //!
-//! The `util` crate provides utility modules and functionality used across the `AuthRamp` library,
+//! The `common` crate provides types, utility modules and functionality used across the `AuthRamp` library,
 //! including configuration management, settings handling, syslog initialization, and custom types.
 //!
 //! # Modules
@@ -23,10 +23,10 @@
 //! and the CLI binary. It ensures that log messages are sent to the appropriate syslog facility,
 //! making it easy to monitor `AuthRamp` activity.
 //!
-//! ## `types`
+//! ## `actions`
 //!
-//! The `types` module defines custom types and enumerations used across the `AuthRamp` library.
-//! It includes types such as `Actions` and other utility types.
+//! The `actions` module defines Action type which represents the current parameter with which the
+//! library is called.
 //!
 //! ## License
 //!
@@ -46,7 +46,7 @@
 //! You should have received a copy of the GNU General Public License
 //! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+pub mod actions;
 pub mod config;
 pub mod settings;
-pub mod syslog;
-pub mod types;
+pub mod util;

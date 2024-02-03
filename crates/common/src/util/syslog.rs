@@ -168,8 +168,8 @@ macro_rules! log_info {
     ($($arg:tt)*) => {
         {
             unsafe {
-                if $crate::syslog::SYSLOG_STATE.logger_initialized {
-                    if let Some(ref pre_log) = $crate::syslog::SYSLOG_STATE.pre_log {
+                if $crate::util::syslog::SYSLOG_STATE.logger_initialized {
+                    if let Some(ref pre_log) = $crate::util::syslog::SYSLOG_STATE.pre_log {
                         log::info!("{}: {}", pre_log, format_args!($($arg)*));
                     }
                 }
@@ -187,8 +187,8 @@ macro_rules! log_error {
     ($($arg:tt)*) => {
         {
             unsafe {
-                if $crate::syslog::SYSLOG_STATE.logger_initialized {
-                    if let Some(ref pre_log) = $crate::syslog::SYSLOG_STATE.pre_log {
+                if $crate::util::syslog::SYSLOG_STATE.logger_initialized {
+                    if let Some(ref pre_log) = $crate::util::syslog::SYSLOG_STATE.pre_log {
                         log::error!("{}: {}", pre_log, format_args!($($arg)*));
                     }
                 }
