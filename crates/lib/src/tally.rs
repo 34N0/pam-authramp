@@ -45,8 +45,7 @@ use std::{
 use chrono::{DateTime, Duration, Utc};
 use common::actions::Actions;
 use common::settings::Settings;
-use common::{log_error, log_info};
-use pam::constants::PamResultCode;
+use pam::PamResultCode;
 use uzers::User;
 
 /// The `Tally` struct represents the account lockout information, including
@@ -134,12 +133,12 @@ impl Tally {
         tally_file: &Path,
         settings: &Settings,
     ) -> Result<(), PamResultCode> {
-        toml::from_str::<toml::Value>(&std::fs::read_to_string(tally_file).map_err(|e| {
-            log_error!("PAM_SYSTEM_ERR: Error reading tally file: {}", e);
+        toml::from_str::<toml::Value>(&std::fs::read_to_string(tally_file).map_err(|_e| {
+            // log_error!("PAM_SYSTEM_ERR: Error reading tally file: {}", e);
             PamResultCode::PAM_SYSTEM_ERR
         })?)
-        .map_err(|e| {
-            log_error!("PAM_SYSTEM_ERR: Error parsing tally file: {}", e);
+        .map_err(|_e| {
+            // log_error!("PAM_SYSTEM_ERR: Error parsing tally file: {}", e);
             PamResultCode::PAM_SYSTEM_ERR
         })
         .and_then(|value| {
@@ -163,9 +162,10 @@ impl Tally {
                     .and_then(|unlock_instant| unlock_instant.parse().ok());
             } else {
                 // If the "Fails" table doesn't exist, return an error
-                log_error!(
+                /* log_error!(
                     "PAM_SYSTEM_ERR: Error reading tally file: [Fails] table does not exist"
                 );
+                */
                 return Err(PamResultCode::PAM_SYSTEM_ERR);
             }
 
@@ -188,7 +188,7 @@ impl Tally {
     /// A `Result` indicating success or a `PAM_SYSTEM_ERR` in case of errors.
     fn update_tally_from_section(
         tally: &mut Tally,
-        user: &User,
+        _user: &User,
         tally_file: &Path,
         settings: &Settings,
     ) -> Result<(), PamResultCode> {
@@ -196,7 +196,7 @@ impl Tally {
         match settings.get_action()? {
             Actions::PREAUTH => Ok(()),
             Actions::AUTHSUCC => {
-                log_error!("{}", format!("asdf: {:?}", settings));
+                // log_error!("{}", format!("asdf: {:?}", settings));
                 // total failures for logging
                 let total_failures = tally.failures_count;
 
@@ -208,18 +208,18 @@ impl Tally {
 
                 // Write the updated values back to the file
                 let toml_str = format!("[Fails]\ncount = {}", tally.failures_count);
-                std::fs::write(tally_file, toml_str).map_err(|e| {
-                    log_error!("PAM_PERM_DENIED: Error resetting tally: {}", e);
+                std::fs::write(tally_file, toml_str).map_err(|_e| {
+                    // log_error!("PAM_PERM_DENIED: Error resetting tally: {}", e);
                     PamResultCode::PAM_PERM_DENIED
                 })?;
 
                 // log account unlock
                 if total_failures > 0 {
-                    log_info!(
+                    /*log_info!(
                         "PAM_SUCCESS: Clear tally ({} failures) for the {:?} account. Account is unlocked.",
                         total_failures,
                         user.name()
-                    );
+                    );*/
                 }
                 Ok(())
             }
@@ -244,19 +244,19 @@ impl Tally {
                     tally.failure_instant,
                     tally.unlock_instant.unwrap()
                 );
-                std::fs::write(tally_file, toml_str).map_err(|e| {
-                    log_error!("PAM_PERM_DENIED: Error writing tally file: {}", e);
+                std::fs::write(tally_file, toml_str).map_err(|_e| {
+                    // log_error!("PAM_PERM_DENIED: Error writing tally file: {}", e);
                     PamResultCode::PAM_PERM_DENIED
                 })?;
 
                 if tally.failures_count > settings.config.free_tries {
                     // log account unlock
-                    log_info!(
+                    /*log_info!(
                         "PAM_AUTH_ERR: Added tally ({} failures) for the {:?} account. Account is locked until {}.",
                         tally.failures_count,
                         user.name(),
                         tally.unlock_instant.unwrap()
-                    );
+                    );*/
                 }
                 Ok(())
             }
@@ -277,8 +277,8 @@ impl Tally {
         tally_file: &Path,
         _settings: &Settings,
     ) -> Result<(), PamResultCode> {
-        fs::create_dir_all(tally_file.parent().unwrap()).map_err(|e| {
-            log_error!("PAM_PERM_DENIED: Error creating tally file: {}", e);
+        fs::create_dir_all(tally_file.parent().unwrap()).map_err(|_e| {
+            // log_error!("PAM_PERM_DENIED: Error creating tally file: {}", e);
             PamResultCode::PAM_PERM_DENIED
         })?;
 
@@ -289,8 +289,8 @@ impl Tally {
             tally.failure_instant
         );
 
-        std::fs::write(tally_file, toml_str).map_err(|e| {
-            log_error!("PAM_SYSTEM_ERR: Error writing tally file: {}", e);
+        std::fs::write(tally_file, toml_str).map_err(|_e| {
+            // log_error!("PAM_SYSTEM_ERR: Error writing tally file: {}", e);
             PamResultCode::PAM_SYSTEM_ERR
         })?;
 

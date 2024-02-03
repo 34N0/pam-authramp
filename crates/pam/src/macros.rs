@@ -5,8 +5,8 @@ macro_rules! pam_hooks {
         mod pam_hooks_scope {
             use std::ffi::CStr;
             use std::os::raw::{c_char, c_int};
-            use $crate::constants::{PamFlag, PamResultCode};
-            use $crate::module::{PamHandle, PamHooks};
+            use $crate::{PamFlag, PamResultCode};
+            use $crate::{PamHandle, PamHooks};
 
             fn extract_argv<'a>(argc: c_int, argv: *const *const c_char) -> Vec<&'a CStr> {
                 (0..argc)

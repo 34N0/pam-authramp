@@ -17,7 +17,7 @@ doc = false
 [dependencies]
 chrono.workspace = true
 log.workspace = true
-pam-bindings.workspace = true
+pam = { path = "../pam" }
 sysinfo.workspace = true
 syslog.workspace = true
 toml.workspace = true

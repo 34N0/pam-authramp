@@ -49,4 +49,3 @@
 pub mod actions;
 pub mod config;
 pub mod settings;
-pub mod util;

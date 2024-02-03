@@ -33,8 +33,6 @@
 
 use std::{fs, path::PathBuf};
 
-use crate::log_info;
-
 const DEFAULT_CONFIG_FILE_PATH: &str = "/etc/security/authramp.conf";
 
 #[derive(Debug)]
@@ -92,9 +90,9 @@ impl Config {
         // Map the config to the Config struct
         config.map_or_else(
             || {
-                log_info!(
+                /*log_info!(
                     "PAM_SYSTEM_ERR: Error parsing configuration file. Using default values."
-                );
+                );*/
                 Config::default()
             },
             |s| Config {

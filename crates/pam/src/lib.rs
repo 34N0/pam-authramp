@@ -1,5 +1,6 @@
 pub mod conv;
 pub mod macros;
+pub mod items;
 
 use libc::c_char;
 use std::ffi::{CStr, CString};
@@ -12,9 +13,9 @@ pub type PamMessageStyle = c_int;
 pub const PAM_ERROR_MSG: PamMessageStyle = 3;
 pub const PAM_TEXT_INFO: PamMessageStyle = 4;
 
+#[allow(non_camel_case_types, dead_code)]
 #[derive(Debug, PartialEq)]
 #[repr(C)]
-#[allow(non_camel_case_types)]
 pub enum PamResultCode {
     PAM_SUCCESS = 0,
     PAM_SYSTEM_ERR = 4,
@@ -23,6 +24,7 @@ pub enum PamResultCode {
     PAM_USER_UNKNOWN = 10,
     PAM_CONV_ERR = 19,
     PAM_IGNORE = 25,
+    PAM_ABORT = 26,
 }
 
 /// Opaque type, used as a pointer when making pam API calls.
@@ -41,6 +43,12 @@ extern "C" {
         pamh: *const PamHandle,
         user: &*mut c_char,
         prompt: *const c_char,
+    ) -> PamResultCode;
+
+    fn pam_get_item(
+        pamh: *const PamHandle,
+        item_type: items::ItemType,
+        item: &mut *const libc::c_void,
     ) -> PamResultCode;
 }
 
@@ -77,6 +85,35 @@ impl PamHandle {
             let bytes = unsafe { CStr::from_ptr(const_ptr).to_bytes() };
             String::from_utf8(bytes.to_vec()).map_err(|_| PamResultCode::PAM_CONV_ERR)
         } else {
+            Err(res)
+        }
+    }
+
+    /// Retrieves a value that has been set, possibly by the pam client.  This is
+    /// particularly useful for getting a `PamConv` reference.
+    ///
+    /// See `pam_get_item` in
+    /// http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the underlying PAM function call fails.
+    pub fn get_item<T: items::Item>(&self) -> PamResult<Option<T>> {
+        let mut ptr: *const libc::c_void = std::ptr::null();
+        let (res, item) = unsafe {
+            let r = pam_get_item(self, T::type_id(), &mut ptr);
+            let typed_ptr = ptr.cast::<T::Raw>();
+            let t = if typed_ptr.is_null() {
+                None
+            } else {
+                Some(T::from_raw(typed_ptr))
+            };
+            (r, t)
+        };
+        if PamResultCode::PAM_SUCCESS == res {
+            Ok(item)
+        } else {
+            println!("hi");
             Err(res)
         }
     }
