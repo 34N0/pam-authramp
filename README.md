@@ -97,7 +97,8 @@ delay = r * (f - f₀) * log(f - f₀) + b
 
 ### Reset user
 The cli uses the reads the same configuration in `authramp.conf`. 
-```console
+```bash
+$ authramp --help
 
  █████ ██    ████████████   ████████  █████ ███    █████████  
 ██   ████    ██   ██   ██   ████   ████   ██████  ██████   ██ 
