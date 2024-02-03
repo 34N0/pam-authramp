@@ -23,8 +23,8 @@
 //! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use colored::Colorize;
-use std::{fs, path::PathBuf};
 use common::config::Config;
+use std::{fs, path::PathBuf};
 
 use crate::{ArCliError, ArCliInfo, ArCliResult as Acr, ArCliSuccess};
 

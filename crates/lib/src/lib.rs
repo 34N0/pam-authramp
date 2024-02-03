@@ -50,15 +50,15 @@
 mod tally;
 
 use chrono::{Duration, Utc};
+use common::actions::Actions;
+use common::settings::Settings;
+use common::{log_error, log_info};
 use pam::constants::{PamFlag, PamResultCode, PAM_TEXT_INFO};
 use pam::conv::Conv;
 use pam::module::{PamHandle, PamHooks};
 use pam::pam_try;
 use std::cmp::min;
 use std::ffi::CStr;
-use common::settings::Settings;
-use common::actions::Actions;
-use common::{log_error, log_info};
 use uzers::get_user_by_name;
 
 use tally::Tally;

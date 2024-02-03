@@ -43,10 +43,10 @@ use std::{
 };
 
 use chrono::{DateTime, Duration, Utc};
-use pam::constants::PamResultCode;
-use common::settings::Settings;
 use common::actions::Actions;
+use common::settings::Settings;
 use common::{log_error, log_info};
+use pam::constants::PamResultCode;
 use uzers::User;
 
 /// The `Tally` struct represents the account lockout information, including

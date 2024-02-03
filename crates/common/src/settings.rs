@@ -25,9 +25,9 @@
 //! You should have received a copy of the GNU General Public License
 //! along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+use crate::actions::Actions;
 use crate::config::Config;
 use crate::log_info;
-use crate::actions::Actions;
 use pam::constants::{PamFlag, PamResultCode};
 use std::collections::HashMap;
 use std::ffi::CStr;
