@@ -52,7 +52,6 @@ mod tally;
 use chrono::{Duration, Utc};
 use common::actions::Actions;
 use common::settings::Settings;
-// use common::{// log_error, log_info};
 use pam::conv::Conv;
 use pam::pam_try;
 use pam::{PamFlag, PamResultCode, PAM_TEXT_INFO};
@@ -157,7 +156,7 @@ where
     // common::util::syslog::init_pam_log(pamh, &settings)?;
 
     // Get and Set tally
-    let tally = Tally::new_from_tally_file(&settings)?;
+    let tally = Tally::new_from_tally_file(&Some(pamh), &settings)?;
 
     pam_hook(pamh, &settings, &tally)
 }
@@ -230,11 +229,15 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
                 .unlock_instant
                 .unwrap_or(tally.failure_instant + delay);
 
-            /*log_info!(
-                "PAM_AUTH_ERR: Account {:?} is getting bounced. Account still locked until {}",
-                user,
-                unlock_instant,
-            );*/
+            match pamh.log(
+                pam::LogLevel::Info,
+                format!(
+                    "PAM_AUTH_ERR: Account {user:?} is getting bounced. Account still locked until {unlock_instant}"
+                ),
+            ) {
+                Ok(()) => (),
+                Err(result_code) => return result_code,
+            }
 
             // disable loop for now (#48, #50)
             if Utc::now() < unlock_instant {
@@ -256,8 +259,14 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
                 // Log Conversation Error but continue loop
                 match conv_res {
                     Ok(_) => (),
-                    Err(_pam_code) => {
-                        // // log_error!("{:?}: Error starting PAM conversation.", pam_code);
+                    Err(pam_code) => {
+                        match pamh.log(
+                            pam::LogLevel::Error,
+                            format!("{pam_code:?}: Error starting PAM conversation."),
+                        ) {
+                            Ok(()) => (),
+                            Err(result_code) => return result_code,
+                        }
                     }
                 }
 
@@ -266,7 +275,7 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
                 return PamResultCode::PAM_AUTH_ERR;
             }
         } else {
-            println!("Init Conversation failed")
+            println!("Init Conversation failed");
         }
     }
     PamResultCode::PAM_SUCCESS

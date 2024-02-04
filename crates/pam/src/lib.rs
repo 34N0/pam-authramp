@@ -147,7 +147,7 @@ impl PamHandle {
     ///
     /// This method wraps pam_syslog, which prefixes the message with a string indicating
     /// the relevant PAM context.
-    pub fn log(&self, level: LogLevel, message: String) -> PamResult<()> {
+    pub fn log(&self, level: LogLevel, message: String) -> Result<(), PamResultCode> {
         let percent_s = CString::new("%s").map_err(|_| PamResultCode::PAM_SYSTEM_ERR)?;
         let message = CString::new(message).map_err(|_| PamResultCode::PAM_SYSTEM_ERR)?;
         let res = unsafe { pam_syslog(self, level as i32, percent_s.as_ptr(), message.as_ptr()) };

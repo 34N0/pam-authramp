@@ -89,12 +89,7 @@ impl Config {
 
         // Map the config to the Config struct
         config.map_or_else(
-            || {
-                /*log_info!(
-                    "PAM_SYSTEM_ERR: Error parsing configuration file. Using default values."
-                );*/
-                Config::default()
-            },
+            || Config::default(),
             |s| Config {
                 tally_dir: s
                     .get("tally_dir")

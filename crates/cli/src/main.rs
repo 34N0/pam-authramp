@@ -145,19 +145,6 @@ fn main() {
         _ => ArCliResult::Success(None),
     };
 
-    // Log the result
-    match &cli_res {
-        ArCliResult::Success(res) => {
-            if let Some(_res) = res {
-                //log_info!("{}", &res.message);
-            }
-        }
-        ArCliResult::Error(_res) => {
-            //// log_error!("{}", &res.message);
-        }
-        ArCliResult::Info(_) => (),
-    }
-
     // Print the result
     println!("{cli_res}");
 }

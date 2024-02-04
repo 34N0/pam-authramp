@@ -142,10 +142,9 @@ impl Settings<'_> {
     ///
     /// Returns a `PamResultCode` error.
     pub fn get_user(&self) -> Result<&User, PamResultCode> {
-        self.user.as_ref().ok_or_else(|| {
-            // log_info!("PAM_USER_UNKNOWN: Authentication failed because user is unknown",);
-            PamResultCode::PAM_USER_UNKNOWN
-        })
+        self.user
+            .as_ref()
+            .ok_or_else(|| PamResultCode::PAM_USER_UNKNOWN)
     }
 }
 
