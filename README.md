@@ -121,9 +121,11 @@ Options:
 ## Logging
 The module and cli generate logs following the PAM module logging style. For instance, the logging entries created during integration tests serve as examples. 
 ```console
-Dec 25 01:48:03 fedora test_pam_auth-8[89228]: pam_authramp(test-authramp:auth): PAM_AUTH_ERR: Added tally (7 failures) for the "test_user" account. Account is locked until 2023-12-25 00:48:33.426241855 UTC.
-Dec 25 01:48:03 fedora test_pam_auth-8[89228]: pam_authramp(test-authramp:auth): PAM_AUTH_ERR: Account "test_user" is getting bounced. Account still locked until 2023-12-25 00:48:33.426241855 UTC
-Dec 25 01:48:40 fedora test_pam_auth-8[89228]: pam_authramp(test-authramp:auth): PAM_SUCCESS: Clear tally (1 failures) for the "test_user" account. Account is unlocked.
+Feb 04 01:42:42 fedora test_pam_auth-501103939372d9d4[89930]: libpam_authramp(test-authramp:auth): PAM_AUTH_ERR: Added tally (7 failures) for the "user" account. Account is locked until 2024-02-04 00:43:12.983474044 UTC.
+Feb 04 01:42:42 fedora test_pam_auth-501103939372d9d4[89930]: libpam_authramp(test-authramp:auth): PAM_AUTH_ERR: Account User(1000, user) is getting bounced. Account still locked until 2024-02-04 00:43:12.983474044 UTC
+Feb 04 01:43:15 fedora test_pam_auth-501103939372d9d4[89930]: libpam_authramp(test-authramp:auth): PAM_AUTH_ERR: Account User(1000, user) is getting bounced. Account still locked until 2024-02-04 00:43:12.983474044 UTC
+Feb 04 01:43:15 fedora test_pam_auth-501103939372d9d4[89930]: libpam_authramp(test-authramp:account): PAM_SUCCESS: Clear tally (7 failures) for the "user" account. Account is unlocked.
+Feb 04 01:43:19 fedora test_pam_auth-501103939372d9d4[89930]: libpam_authramp(test-authramp:account): PAM_SUCCESS: Clear tally (1 failures) for the "user" account. Account is unlocked.
 ```
 
 ## Threat Model

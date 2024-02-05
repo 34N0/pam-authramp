@@ -1,6 +1,6 @@
 [workspace]
 resolver= "2"
-members = [ "crates/lib", "crates/cli", "crates/common", "crates/xtask-integration-test" ]
+members = [ "crates/cli", "crates/common", "crates/pam" ]
 
 [workspace.package]
 edition = "2021"
@@ -12,22 +12,14 @@ homepage = "https://github.com/34N0/pam-authramp/"
 repository = "https://github.com/34N0/pam-authramp/"
 
 [workspace.dependencies]
-anyhow = "1.0.75"
 chrono = "0.4.31"
 clap = { version = "4.4.16", features = ["derive"] }
-cli-xtask = { version = "0.8.0", features = ["main", "lib-crate"] }
 colored = "2.1.0"
-libc = "0.2.152"
-log = "0.4"
-pam-bindings = "0.1.1"
-pam-client = "0.5.0"
-sysinfo = "0.30.0"
-syslog = "6.1.0"
+libc = "0.2.97"
 tempdir = "0.3.7"
 tempfile = "3.8.1"
 toml = "0.8.8"
 uzers = "0.11.3"
-xshell = "0.2.5"
 
 [workspace.lints.clippy]
 pedantic = { level = "deny" }
@@ -41,8 +33,21 @@ description.workspace = true
 authors.workspace = true
 license.workspace = true
 
+[lib]
+name = "pam_authramp"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+doc = false
+
+[dependencies]
+chrono.workspace = true
+libc.workspace = true
+toml.workspace = true
+common = { path = "crates/common" }
+pam = { path = "crates/pam" }
+uzers.workspace = true
+
 [dev-dependencies]
-pam-client.workspace = true
 tempdir.workspace = true
 tempfile.workspace = true
 

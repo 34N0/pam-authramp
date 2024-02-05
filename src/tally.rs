@@ -45,8 +45,7 @@ use std::{
 use chrono::{DateTime, Duration, Utc};
 use common::actions::Actions;
 use common::settings::Settings;
-use common::{log_error, log_info};
-use pam::constants::PamResultCode;
+use pam::{PamHandle, PamResultCode};
 use uzers::User;
 
 /// The `Tally` struct represents the account lockout information, including
@@ -104,16 +103,19 @@ impl Tally {
     ///
     /// # Returns
     /// A `Result` containing either the `Tally` struct or a `PAM_AUTH_ERR`.
-    pub fn new_from_tally_file(settings: &Settings) -> Result<Self, PamResultCode> {
+    pub fn new_from_tally_file(
+        pamh: &Option<&mut PamHandle>,
+        settings: &Settings,
+    ) -> Result<Self, PamResultCode> {
         let mut tally = Tally::default();
         let user = settings.get_user()?;
 
         let tally_file = settings.config.tally_dir.join(user.name());
 
         if tally_file.exists() {
-            Self::load_tally_from_file(&mut tally, user, &tally_file, settings)?;
+            Self::load_tally_from_file(pamh, &mut tally, user, &tally_file, settings)?;
         } else if settings.action == Some(Actions::AUTHFAIL) {
-            Self::create_tally_file(&mut tally, &tally_file, settings)?;
+            Self::create_tally_file(pamh, &mut tally, &tally_file, settings)?;
         };
 
         Ok(tally)
@@ -129,17 +131,36 @@ impl Tally {
     /// # Returns
     /// A `Result` indicating success or a `PAM_SYSTEM_ERR` in case of errors.
     fn load_tally_from_file(
+        pamh: &Option<&mut PamHandle>,
         tally: &mut Tally,
         user: &User,
         tally_file: &Path,
         settings: &Settings,
     ) -> Result<(), PamResultCode> {
         toml::from_str::<toml::Value>(&std::fs::read_to_string(tally_file).map_err(|e| {
-            log_error!("PAM_SYSTEM_ERR: Error reading tally file: {}", e);
+            if let Some(pamh) = &pamh {
+                match pamh.log(
+                    pam::LogLevel::Error,
+                    format!("{e:?}: Error reading tally file:"),
+                ) {
+                    Ok(()) => (),
+                    Err(result_code) => return result_code,
+                }
+            }
+
             PamResultCode::PAM_SYSTEM_ERR
         })?)
         .map_err(|e| {
-            log_error!("PAM_SYSTEM_ERR: Error parsing tally file: {}", e);
+            if let Some(pamh) = &pamh {
+                match pamh.log(
+                    pam::LogLevel::Error,
+                    format!("{e:?}: Error parsing tally file: {e}"),
+                ) {
+                    Ok(()) => (),
+                    Err(result_code) => return result_code,
+                }
+            }
+
             PamResultCode::PAM_SYSTEM_ERR
         })
         .and_then(|value| {
@@ -163,13 +184,21 @@ impl Tally {
                     .and_then(|unlock_instant| unlock_instant.parse().ok());
             } else {
                 // If the "Fails" table doesn't exist, return an error
-                log_error!(
-                    "PAM_SYSTEM_ERR: Error reading tally file: [Fails] table does not exist"
-                );
+
+                if let Some(pamh) = &pamh {
+                    match pamh.log(
+                        pam::LogLevel::Error,
+                        "Error reading tally file: [Fails] table does not exist".to_string(),
+                    ) {
+                        Ok(()) => (),
+                        Err(result_code) => return Err(result_code),
+                    }
+                }
+
                 return Err(PamResultCode::PAM_SYSTEM_ERR);
             }
 
-            Self::update_tally_from_section(tally, user, tally_file, settings)
+            Self::update_tally_from_section(pamh, tally, user, tally_file, settings)
         })
     }
 
@@ -187,6 +216,7 @@ impl Tally {
     /// # Returns
     /// A `Result` indicating success or a `PAM_SYSTEM_ERR` in case of errors.
     fn update_tally_from_section(
+        pamh: &Option<&mut PamHandle>,
         tally: &mut Tally,
         user: &User,
         tally_file: &Path,
@@ -196,7 +226,6 @@ impl Tally {
         match settings.get_action()? {
             Actions::PREAUTH => Ok(()),
             Actions::AUTHSUCC => {
-                log_error!("{}", format!("asdf: {:?}", settings));
                 // total failures for logging
                 let total_failures = tally.failures_count;
 
@@ -209,17 +238,29 @@ impl Tally {
                 // Write the updated values back to the file
                 let toml_str = format!("[Fails]\ncount = {}", tally.failures_count);
                 std::fs::write(tally_file, toml_str).map_err(|e| {
-                    log_error!("PAM_PERM_DENIED: Error resetting tally: {}", e);
+                    if let Some(pamh) = &pamh {
+                        match pamh.log(pam::LogLevel::Error, format!("Error resetting tally: {e}"))
+                        {
+                            Ok(()) => (),
+                            Err(result_code) => return result_code,
+                        }
+                    }
                     PamResultCode::PAM_PERM_DENIED
                 })?;
 
                 // log account unlock
                 if total_failures > 0 {
-                    log_info!(
-                        "PAM_SUCCESS: Clear tally ({} failures) for the {:?} account. Account is unlocked.",
+                    if let Some(pamh) = &pamh {
+                        match pamh.log(
+                        pam::LogLevel::Info,
+                        format!("PAM_SUCCESS: Clear tally ({} failures) for the {:?} account. Account is unlocked.",
                         total_failures,
-                        user.name()
-                    );
+                        user.name()),
+                    ) {
+                        Ok(()) => (),
+                        Err(result_code) => return Err(result_code),
+                    }
+                    }
                 }
                 Ok(())
             }
@@ -245,18 +286,33 @@ impl Tally {
                     tally.unlock_instant.unwrap()
                 );
                 std::fs::write(tally_file, toml_str).map_err(|e| {
-                    log_error!("PAM_PERM_DENIED: Error writing tally file: {}", e);
+                    if let Some(pamh) = &pamh {
+                        match pamh.log(
+                            pam::LogLevel::Error,
+                            format!("{e:?}: Error writing tally file:"),
+                        ) {
+                            Ok(()) => (),
+                            Err(result_code) => return result_code,
+                        }
+                    }
+
                     PamResultCode::PAM_PERM_DENIED
                 })?;
 
                 if tally.failures_count > settings.config.free_tries {
                     // log account unlock
-                    log_info!(
-                        "PAM_AUTH_ERR: Added tally ({} failures) for the {:?} account. Account is locked until {}.",
-                        tally.failures_count,
-                        user.name(),
-                        tally.unlock_instant.unwrap()
-                    );
+                    if let Some(pamh) = &pamh {
+                        match pamh.log(
+                            pam::LogLevel::Info,
+                            format!("PAM_AUTH_ERR: Added tally ({} failures) for the {:?} account. Account is locked until {}.",
+                            tally.failures_count,
+                            user.name(),
+                            tally.unlock_instant.unwrap()),
+                        ) {
+                            Ok(()) => (),
+                            Err(result_code) => return Err(result_code),
+                        }
+                    }
                 }
                 Ok(())
             }
@@ -273,12 +329,21 @@ impl Tally {
     /// # Returns
     /// A `Result` indicating success or a `PAM_SYSTEM_ERR` in case of errors.
     fn create_tally_file(
+        pamh: &Option<&mut PamHandle>,
         tally: &mut Tally,
         tally_file: &Path,
         _settings: &Settings,
     ) -> Result<(), PamResultCode> {
         fs::create_dir_all(tally_file.parent().unwrap()).map_err(|e| {
-            log_error!("PAM_PERM_DENIED: Error creating tally file: {}", e);
+            if let Some(pamh) = &pamh {
+                match pamh.log(
+                    pam::LogLevel::Error,
+                    format!("{e:?}: Error creating tally file:"),
+                ) {
+                    Ok(()) => (),
+                    Err(result_code) => return result_code,
+                }
+            }
             PamResultCode::PAM_PERM_DENIED
         })?;
 
@@ -290,7 +355,15 @@ impl Tally {
         );
 
         std::fs::write(tally_file, toml_str).map_err(|e| {
-            log_error!("PAM_SYSTEM_ERR: Error writing tally file: {}", e);
+            if let Some(pamh) = &pamh {
+                match pamh.log(
+                    pam::LogLevel::Error,
+                    format!("{e:?}:  Error writing tally file:"),
+                ) {
+                    Ok(()) => (),
+                    Err(result_code) => return result_code,
+                }
+            }
             PamResultCode::PAM_SYSTEM_ERR
         })?;
 
@@ -351,7 +424,7 @@ mod tests {
         };
 
         // Test: Open existing tally file
-        let result = Tally::new_from_tally_file(&settings);
+        let result = Tally::new_from_tally_file(&None, &settings);
 
         // Check if the Tally struct is created with expected values
         assert!(result.is_ok());
@@ -387,7 +460,7 @@ mod tests {
         };
 
         // Test: Open nonexistent tally file
-        let result = Tally::new_from_tally_file(&settings);
+        let result = Tally::new_from_tally_file(&None, &settings);
 
         println!("{result:?}");
 
@@ -436,7 +509,7 @@ mod tests {
             config,
         };
 
-        let tally = Tally::new_from_tally_file(&settings).unwrap();
+        let tally = Tally::new_from_tally_file(&None, &settings).unwrap();
 
         // Check if the values are updated on AUTHFAIL
         assert_eq!(tally.failures_count, 3); // Assuming you increment the count
@@ -481,7 +554,7 @@ mod tests {
             config,
         };
 
-        let _tally = Tally::new_from_tally_file(&settings).unwrap();
+        let _tally = Tally::new_from_tally_file(&None, &settings).unwrap();
 
         // Expect tally count to reset
         let toml_content = fs::read_to_string(&tally_file_path).unwrap();

@@ -48,7 +48,6 @@
 use clap::{Parser, Subcommand};
 use cmd::reset;
 use colored::Colorize;
-use common::{log_error, log_info, util::syslog};
 use std::fmt;
 mod cmd;
 
@@ -139,25 +138,12 @@ enum Command {
 /// Initializes the syslog, parses command-line arguments, executes the corresponding subcommand,
 /// and prints the result.
 fn main() {
-    syslog::init_cli_log().unwrap_or_else(|e| println!("{e:?}: Error initializing cli log:"));
+    //syslog::init_cli_log().unwrap_or_else(|e| println!("{e:?}: Error initializing cli log:"));
 
     let cli_res = match Cli::parse().command {
         Some(Command::Reset { user }) => reset::user(&user),
         _ => ArCliResult::Success(None),
     };
-
-    // Log the result
-    match &cli_res {
-        ArCliResult::Success(res) => {
-            if let Some(res) = res {
-                log_info!("{}", &res.message);
-            }
-        }
-        ArCliResult::Error(res) => {
-            log_error!("{}", &res.message);
-        }
-        ArCliResult::Info(_) => (),
-    }
 
     // Print the result
     println!("{cli_res}");

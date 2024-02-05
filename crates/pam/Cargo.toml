@@ -1,5 +1,5 @@
 [package]
-name = "common"
+name = "pam"
 edition.workspace = true
 version.workspace = true
 description.workspace = true
@@ -9,18 +9,9 @@ homepage.workspace = true
 repository.workspace = true
 
 [lib]
-name = "common"
+name = "pam"
 path = "src/lib.rs"
 doc = false
 
 [dependencies]
-chrono.workspace = true
-toml.workspace = true
-uzers.workspace = true
-pam = { "path" = "../pam"}
-
-[dev-dependencies]
-tempdir.workspace = true
-
-[lints]
-workspace = true
+libc.workspace = true
