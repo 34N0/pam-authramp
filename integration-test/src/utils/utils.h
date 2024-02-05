@@ -9,6 +9,7 @@
 
 extern char SRV_DIR[];
 extern char PAM_SRV[];
+extern char TALLY_DIR[];
 extern struct pam_conv conv;
 
 int create_pam_service_file(const char *srv_content);

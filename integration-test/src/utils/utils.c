@@ -1,4 +1,5 @@
 #include "utils.h"
+#include <dirent.h>
 #include <security/pam_appl.h>
 #include <security/pam_misc.h>
 #include <stdio.h>
@@ -9,7 +10,7 @@
 char SRV_DIR[] = "/etc/pam.d/";
 char PAM_SRV[] = "test-authramp";
 
-const char TALLY_DIR[] = "/var/run/authramp";
+char TALLY_DIR[] = "/var/run/authramp/";
 
 struct pam_conv conv = {misc_conv, NULL};
 
@@ -56,9 +57,26 @@ int remove_pam_service_file() {
 }
 
 int clear_tally_dir() {
-  if (rmdir(TALLY_DIR) != 0) {
-    perror("Error clearing tally directory");
-    return 1;
+  DIR *dir = opendir(TALLY_DIR);
+  if (dir == NULL) {
+    perror("Error opening directory");
+    return -1;
+  }
+
+  struct dirent *entry;
+  while ((entry = readdir(dir)) != NULL) {
+    if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+      char entry_path[256]; // Adjust the buffer size based on your needs
+      snprintf(entry_path, sizeof(entry_path), "%s/%s", TALLY_DIR,
+               entry->d_name);
+
+      // Remove regular files
+      if (unlink(entry_path) != 0) {
+        perror("Error removing file");
+        closedir(dir);
+        return -1;
+      }
+    }
   }
   return 0;
 }

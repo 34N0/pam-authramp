@@ -4,12 +4,13 @@
 #include <stdio.h>
 #include <unistd.h>
 
-int test_valid_auth() {
+int test_invalid_auth() {
   printf("------ \n");
   printf("test_valid_auth: \n\n");
 
   char srv[] =
       "auth        required                                     libpam_authramp.so preauth \n\
+      auth        [default=die]                                libpam_authramp.so authfail \n\
       account     required                                     libpam_authramp.so";
 
   create_pam_service_file(srv);
@@ -35,12 +36,11 @@ int test_valid_auth() {
 
   // Did everything work?
   if (retval == PAM_SUCCESS) {
-    printf("Account is valid.\n");
-    printf("Authenticated\n");
+    print_error("Account is valid.\n");
+    print_error("Authenticated\n");
   } else {
     char e[256];
-    sprintf(e, "Not Authenticated:  %d\n", retval);
-    print_error(e);
+    printf("Not Authenticated:  %d\n", retval);
   }
 
   // close PAM (end session)
@@ -51,8 +51,17 @@ int test_valid_auth() {
 
   remove_pam_service_file();
 
-  if (retval == PAM_SUCCESS) {
-    print_success("test_valid_auth");
+  if (retval != PAM_SUCCESS) {
+
+  char tallyFilePath[FILE_PATH_MAX];
+  snprintf(tallyFilePath, sizeof(tallyFilePath), "%s%s", TALLY_DIR, user_name);
+    
+    if (access(tallyFilePath, F_OK) != -1) {
+      print_success("test_valid_auth");
+    } else {
+      print_error("tally file not created");
+    }
+    clear_tally_dir();
   }
   return retval;
 }

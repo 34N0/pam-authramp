@@ -6,5 +6,6 @@
 #include "../utils/utils.h"
 
 int test_valid_auth();
+int test_invalid_auth();
 
 #endif  // TESTS_H
