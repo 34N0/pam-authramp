@@ -88,7 +88,7 @@ clean:
 
 integration-test: all
 	@echo Building libpam_authramp and installing it...
-	$(shell cargo build -p lib)
+	$(shell cargo build)
 	$(shell sudo cp ../target/debug/libpam_authramp.so /lib64/security/)
 	sudo ./$(OUTPUTMAIN)
 	@echo Executing 'integration-test' complete!
