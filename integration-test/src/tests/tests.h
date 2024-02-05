@@ -7,5 +7,6 @@
 
 int test_valid_auth();
 int test_invalid_auth();
+int test_bounce_auth();
 
 #endif  // TESTS_H

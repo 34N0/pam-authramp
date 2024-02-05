@@ -1,12 +1,14 @@
 #include "../utils/utils.h"
+#include <security/_pam_types.h>
 #include <security/pam_appl.h>
 #include <security/pam_misc.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
-int test_invalid_auth() {
+int test_bounce_auth() {
   printf("------ \n");
-  printf("test_invalid_auth: \n\n");
+  printf("test_auth_bounce: \n\n");
 
   char srv[] =
       "auth        required                                     libpam_authramp.so preauth \n\
@@ -25,7 +27,10 @@ int test_invalid_auth() {
   // Are the credentials correct?
   if (retval == PAM_SUCCESS) {
     printf("PAM module initialized\n");
-    retval = pam_authenticate(pamh, 0);
+    // authenticate 8 times to cause lock
+    for (int i = 0; i < 7; ++i) {
+      retval = pam_authenticate(pamh, 0);
+    }
   }
 
   // Can the accound be used at this time?
@@ -53,15 +58,16 @@ int test_invalid_auth() {
 
   if (retval != PAM_SUCCESS) {
 
-  char tallyFilePath[FILE_PATH_MAX];
-  snprintf(tallyFilePath, sizeof(tallyFilePath), "%s%s", TALLY_DIR, user_name);
-    
+    char tallyFilePath[FILE_PATH_MAX];
+    snprintf(tallyFilePath, sizeof(tallyFilePath), "%s%s", TALLY_DIR,
+             user_name);
+
     if (access(tallyFilePath, F_OK) != -1) {
-      print_success("test_invalid_auth");
+      print_success("test_auth_bounce");
     } else {
       print_error("tally file not created");
     }
-    clear_tally_dir();
+    // clear_tally_dir();
   }
   return retval;
 }
