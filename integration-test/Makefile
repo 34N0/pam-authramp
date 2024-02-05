@@ -1,6 +1,7 @@
 #
-# 'make'        build executable file 'main'
+# 'make'        build executable file 'integration-test'
 # 'make clean'  removes all .o and executable files
+# 'sudo make integration-test'  	run tests
 #
 
 # define the C compiler to use
@@ -8,11 +9,10 @@ CC = gcc
 
 # define any compile-time flags
 CFLAGS	:= -Wall -Wextra -g
-
 # define library paths in addition to /usr/lib
 #   if I wanted to include libraries not in /usr/lib I'd specify
 #   their path using -Lpath, something like:
-LFLAGS =
+LFLAGS = -lpam -lpam_misc
 
 # define output directory
 OUTPUT	:= output
@@ -26,15 +26,6 @@ INCLUDE	:= include
 # define lib directory
 LIB		:= lib
 
-ifeq ($(OS),Windows_NT)
-MAIN	:= main.exe
-SOURCEDIRS	:= $(SRC)
-INCLUDEDIRS	:= $(INCLUDE)
-LIBDIRS		:= $(LIB)
-FIXPATH = $(subst /,\,$1)
-RM			:= del /q /f
-MD	:= mkdir
-else
 MAIN	:= main
 SOURCEDIRS	:= $(shell find $(SRC) -type d)
 INCLUDEDIRS	:= $(shell find $(INCLUDE) -type d)
@@ -42,7 +33,6 @@ LIBDIRS		:= $(shell find $(LIB) -type d)
 FIXPATH = $1
 RM = rm -f
 MD	:= mkdir -p
-endif
 
 # define any directories containing header files other than /usr/include
 INCLUDES	:= $(patsubst %,-I%, $(INCLUDEDIRS:%/=%))
@@ -92,8 +82,13 @@ clean:
 	$(RM) $(OUTPUTMAIN)
 	$(RM) $(call FIXPATH,$(OBJECTS))
 	$(RM) $(call FIXPATH,$(DEPS))
+	@echo Uninstalling libpam_authramp.so
+	$(shell sudo rm /lib64/security/libpam_authramp.so)
 	@echo Cleanup complete!
 
-run: all
-	./$(OUTPUTMAIN)
-	@echo Executing 'run: all' complete!
+integration-test: all
+	@echo Building libpam_authramp and installing it...
+	$(shell cargo build -p lib)
+	$(shell sudo cp ../target/debug/libpam_authramp.so /lib64/security/)
+	sudo ./$(OUTPUTMAIN)
+	@echo Executing 'integration-test' complete!
