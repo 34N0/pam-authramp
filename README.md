@@ -5,6 +5,7 @@ The AuthRamp PAM (Pluggable Authentication Modules) module provides an account l
 2. [Configuration](#configuration)
 3. [Threat model](#threat-model)
 4. [Contributing](#contributing)
+5. [Mentions](#mentions)
 
 ## Installation
 ### RPM
@@ -148,3 +149,8 @@ pam-authramp provides a valuable layer of defense against brute-force attacks, b
 
 ## Contributing
 Contributing is welcomed! Read the [Contributing Guide](CONTRIBUTING.md) and the [CoC](CODE_OF_CONDUCT.md).
+
+## Mentions
+- This project would not have been possible without the work done in the [pam-rs](https://github.com/anowell/pam-rs) crate.
+- The Lockout mechanism is inspired by the [GrapheneOS](https://grapheneos.org/faq#security-and-privacy) implementation.
+- This Module was developed to fix a PAM DoS vulnerability in [Secureblue](https://github.com/secureblue/secureblue).
