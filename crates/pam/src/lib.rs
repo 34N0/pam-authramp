@@ -1,3 +1,28 @@
+//! # PAM Module
+//!
+//! This is the main module of the PAM library. It provides the main data structures and functions
+//! for interacting with the Pluggable Authentication Modules (PAM) system.
+//!
+//! The main types provided by this module are:
+//! - `PamHandle`: An opaque type that represents a handle to the PAM context. This handle is
+//!   used to make API calls to the PAM system.
+//! - `PamResultCode`: An enum representing the possible result codes that can be returned by
+//!   PAM functions.
+//! - `PamFlag`: An enum representing the possible flags that can be passed to PAM functions.
+//! - `LogLevel`: An enum representing the possible log levels that can be used when logging
+//!   messages with the `pam_syslog` function.
+//!
+//! This module also provides the `PamHooks` trait, which can be implemented by types that
+//! provide hooks for various PAM operations, such as account management and authentication.
+//!
+//!  ## License
+//! 
+//! Copyright 2023 34n0
+//! 
+//! Use of this source code is governed by an MIT-style
+//! license that can be found in the LICENSE file or at
+//! https://opensource.org/licenses/MIT.
+
 pub mod conv;
 pub mod items;
 pub mod macros;
