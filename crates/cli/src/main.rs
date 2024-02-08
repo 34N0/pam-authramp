@@ -60,6 +60,13 @@ const BANNER: &str = r"
 ██   ██ ██████    ██   ██   ████   ████   ████      ████
 
 by 34n0@immerda.ch";
+/// Structs and enum to represent CLI output with colored formatting.
+///
+/// `ArCliError`, `ArCliSuccess`, and `ArCliInfo` implement `Display`
+/// to format the message with colors and text.
+///
+/// `ArCliResult` is an enum with variants to hold the different structs.
+/// It implements `Display` to delegate to the inner value's implementation.
 
 #[derive(Debug)]
 pub struct ArCliError {

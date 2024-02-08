@@ -1,3 +1,9 @@
+// Copyright 2023 34n0
+// 
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #include "../utils/utils.h"
 #include <security/pam_appl.h>
 #include <security/pam_misc.h>

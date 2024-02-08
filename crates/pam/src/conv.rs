@@ -1,3 +1,23 @@
+//! # PAM conversation module
+//!
+//! This module provides functions for handling PAM conversation.
+//!
+//! The PAM conversation function is a callback provided by the application, which is used
+//! by the PAM library to communicate with the user. This can include prompting for a password,
+//! displaying error messages, or any other interaction with the user.
+//!
+//! The conversation function is provided to the PAM library by the application in the `pam_conv`
+//! structure, which is passed to `pam_start`.
+//!
+//! The `conv` module provides a safe wrapper around the raw `pam_conv` structure, and includes
+//! functions for creating a new `pam_conv` structure, and for invoking the conversation function
+//! with a given message style and message string.
+//!
+//! It also provides the `PamMessageStyle` enum, which represents the different types of messages
+//! that can be passed to the conversation function, and the `PamConv` struct, which represents
+//! a PAM conversation.
+//!
+
 use libc::{c_char, c_int};
 use std::ffi::{CStr, CString};
 use std::ptr;
@@ -37,6 +57,11 @@ pub struct Inner {
 pub struct Conv<'a>(&'a Inner);
 
 impl<'a> Conv<'a> {
+    /// Sends a PAM message to the PAM conversation function.
+    ///
+    /// This allows the PAM module to communicate with the client
+    /// application by sending messages, prompts, errors, etc. that
+    /// will be displayed to the user.
     /// Sends a message to the pam client.
     ///
     /// This will typically result in the user seeing a message or a prompt.
@@ -76,6 +101,9 @@ impl<'a> Conv<'a> {
     }
 }
 
+/// Provides implementations for the `Item` trait for `Conv`.
+/// This allows a `Conv` to be used as an item in the PAM conversation
+/// model.
 impl<'a> Item for Conv<'a> {
     type Raw = Inner;
 
