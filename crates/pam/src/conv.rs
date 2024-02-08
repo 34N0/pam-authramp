@@ -17,6 +17,13 @@
 //! that can be passed to the conversation function, and the `PamConv` struct, which represents
 //! a PAM conversation.
 //!
+//! ## License
+//! 
+//! Copyright 2023 34n0
+//! 
+//! Use of this source code is governed by an MIT-style
+//! license that can be found in the LICENSE file or at
+//! https://opensource.org/licenses/MIT.
 
 use libc::{c_char, c_int};
 use std::ffi::{CStr, CString};
