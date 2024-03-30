@@ -142,9 +142,7 @@ impl Settings<'_> {
     ///
     /// Returns a `PamResultCode` error.
     pub fn get_user(&self) -> Result<&User, PamResultCode> {
-        self.user
-            .as_ref()
-            .ok_or_else(|| PamResultCode::PAM_USER_UNKNOWN)
+        self.user.as_ref().ok_or(PamResultCode::PAM_USER_UNKNOWN)
     }
 }
 
@@ -152,8 +150,6 @@ impl Settings<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::ffi::CStr;
-    use uzers::User;
 
     #[test]
     fn test_default_settings() {

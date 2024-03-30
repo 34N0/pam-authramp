@@ -389,9 +389,7 @@ impl Tally {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
     use tempdir::TempDir;
-    use uzers::User;
 
     use common::config::Config;
 

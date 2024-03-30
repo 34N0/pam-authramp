@@ -88,35 +88,32 @@ impl Config {
         let config = toml_table.and_then(|t| t.get("Configuration").cloned());
 
         // Map the config to the Config struct
-        config.map_or_else(
-            || Config::default(),
-            |s| Config {
-                tally_dir: s
-                    .get("tally_dir")
-                    .and_then(|val| val.as_str().map(PathBuf::from))
-                    .unwrap_or_else(|| Config::default().tally_dir),
+        config.map_or_else(Config::default, |s| Config {
+            tally_dir: s
+                .get("tally_dir")
+                .and_then(|val| val.as_str().map(PathBuf::from))
+                .unwrap_or_else(|| Config::default().tally_dir),
 
-                free_tries: s
-                    .get("free_tries")
-                    .and_then(toml::Value::as_integer)
-                    .map_or_else(|| Config::default().free_tries, |val| val as i32),
+            free_tries: s
+                .get("free_tries")
+                .and_then(toml::Value::as_integer)
+                .map_or_else(|| Config::default().free_tries, |val| val as i32),
 
-                base_delay_seconds: s
-                    .get("base_delay_seconds")
-                    .and_then(toml::Value::as_integer)
-                    .map_or_else(|| Config::default().base_delay_seconds, |val| val as i32),
+            base_delay_seconds: s
+                .get("base_delay_seconds")
+                .and_then(toml::Value::as_integer)
+                .map_or_else(|| Config::default().base_delay_seconds, |val| val as i32),
 
-                ramp_multiplier: s
-                    .get("ramp_multiplier")
-                    .and_then(toml::Value::as_float)
-                    .map_or_else(|| Config::default().ramp_multiplier, |val| val as i32),
+            ramp_multiplier: s
+                .get("ramp_multiplier")
+                .and_then(toml::Value::as_float)
+                .map_or_else(|| Config::default().ramp_multiplier, |val| val as i32),
 
-                even_deny_root: s
-                    .get("even_deny_root")
-                    .and_then(toml::Value::as_bool)
-                    .unwrap_or_else(|| Config::default().even_deny_root),
-            },
-        )
+            even_deny_root: s
+                .get("even_deny_root")
+                .and_then(toml::Value::as_bool)
+                .unwrap_or_else(|| Config::default().even_deny_root),
+        })
     }
 }
 
