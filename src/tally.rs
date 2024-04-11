@@ -204,7 +204,7 @@ impl Tally {
 
     /// Updates tally information based on a section from the tally file.
     ///
-    /// AUTHSUCC deteltes the tally
+    /// AUTHSUCC deletes the tally
     /// AUTHERR increases the tally
     /// PREAUTH is ignored;
     ///
@@ -497,6 +497,7 @@ mod tests {
             ramp_multiplier: 50,
             base_delay_seconds: 30,
             even_deny_root: false,
+            countdown: true,
         };
 
         // Create settings and call new_from_tally_file with AUTHFAIL action
@@ -542,6 +543,7 @@ mod tests {
             ramp_multiplier: 50,
             base_delay_seconds: 30,
             even_deny_root: false,
+            countdown: true,
         };
 
         // Create settings and call new_from_tally_file with AUTHSUCC action

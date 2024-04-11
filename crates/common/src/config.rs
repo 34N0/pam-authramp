@@ -47,6 +47,8 @@ pub struct Config {
     pub ramp_multiplier: i32,
     // Even lock out root user
     pub even_deny_root: bool,
+    // Count down lockout loop,
+    pub countdown: bool,
 }
 
 impl Default for Config {
@@ -58,6 +60,7 @@ impl Default for Config {
             base_delay_seconds: 30,
             ramp_multiplier: 50,
             even_deny_root: false,
+            countdown: false,
         }
     }
 }
@@ -113,6 +116,11 @@ impl Config {
                 .get("even_deny_root")
                 .and_then(toml::Value::as_bool)
                 .unwrap_or_else(|| Config::default().even_deny_root),
+
+            countdown: s
+                .get("countdown")
+                .and_then(toml::Value::as_bool)
+                .unwrap_or_else(|| Config::default().countdown),
         })
     }
 }
@@ -131,6 +139,7 @@ mod tests {
         assert_eq!(default_config.free_tries, 6);
         assert_eq!(default_config.base_delay_seconds, 30);
         assert_eq!(default_config.ramp_multiplier, 50);
+        assert_eq!(default_config.countdown, true);
         assert!(!default_config.even_deny_root);
     }
 

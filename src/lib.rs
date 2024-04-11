@@ -58,6 +58,7 @@ use pam::{PamFlag, PamResultCode, PAM_TEXT_INFO};
 use pam::{PamHandle, PamHooks};
 use std::cmp::min;
 use std::ffi::CStr;
+use std::thread::sleep;
 use uzers::get_user_by_name;
 
 use tally::Tally;
@@ -92,7 +93,7 @@ impl PamHooks for Pamauthramp {
                 Actions::PREAUTH => Ok(bounce_auth(pamh, settings, tally)),
                 // bounce if called with authfail
                 Actions::AUTHFAIL => Err(bounce_auth(pamh, settings, tally)),
-                Actions::AUTHSUCC => Err(PamResultCode::PAM_AUTH_ERR),
+                Actions::AUTHSUCC => Ok(PamResultCode::PAM_SUCCESS),
             }
         })
         .unwrap_or_else(|e| e)
@@ -177,7 +178,7 @@ fn format_remaining_time(remaining_time: Duration) -> String {
             } else {
                 unit
             };
-            formatted_time.push_str(&format!("{value} {unit_str}"));
+            formatted_time.push_str(&format!("{value} {unit_str} "));
         }
     }
 
@@ -240,7 +241,7 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
             }
 
             // disable loop for now (#48, #50)
-            if Utc::now() < unlock_instant {
+            while Utc::now() < unlock_instant {
                 // Calculate remaining time until unlock
                 let remaining_time = unlock_instant - Utc::now();
 
@@ -270,9 +271,13 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
                     }
                 }
 
+                // Don't loop if configured
+                if !settings.config.countdown {
+                    return PamResultCode::PAM_AUTH_ERR;
+                }
+
                 // Wait for one second
-                // sleep(std::time::Duration::from_secs(1));
-                return PamResultCode::PAM_AUTH_ERR;
+                sleep(std::time::Duration::from_secs(1));
             }
         } else {
             println!("Init Conversation failed");
