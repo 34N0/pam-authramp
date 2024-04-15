@@ -92,12 +92,8 @@ impl PamHooks for Pamauthramp {
             match settings.get_action()? {
                 Actions::PREAUTH => {
                     let res = bounce_auth(pamh, settings, tally);
-                    pamh.log(
-                        pam::LogLevel::Info,
-                        format!("preauth! {:?}", res),
-                    )?;
                     Ok(res)
-                },
+                }
                 // bounce if called with authfail
                 Actions::AUTHFAIL => Err(bounce_auth(pamh, settings, tally)),
                 Actions::AUTHSUCC => Ok(PamResultCode::PAM_SUCCESS),

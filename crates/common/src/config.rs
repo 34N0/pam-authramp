@@ -139,7 +139,7 @@ mod tests {
         assert_eq!(default_config.free_tries, 6);
         assert_eq!(default_config.base_delay_seconds, 30);
         assert_eq!(default_config.ramp_multiplier, 50);
-        assert_eq!(default_config.countdown, true);
+        assert!(default_config.countdown);
         assert!(!default_config.even_deny_root);
     }
 
