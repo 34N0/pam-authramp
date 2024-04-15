@@ -90,7 +90,14 @@ impl PamHooks for Pamauthramp {
         init_authramp(pamh, &args, flags, "auth", |pamh, settings, tally| {
             // match action parameter
             match settings.get_action()? {
-                Actions::PREAUTH => Ok(bounce_auth(pamh, settings, tally)),
+                Actions::PREAUTH => {
+                    let res = bounce_auth(pamh, settings, tally);
+                    pamh.log(
+                        pam::LogLevel::Info,
+                        format!("preauth! {:?}", res),
+                    )?;
+                    Ok(res)
+                },
                 // bounce if called with authfail
                 Actions::AUTHFAIL => Err(bounce_auth(pamh, settings, tally)),
                 Actions::AUTHSUCC => Ok(PamResultCode::PAM_SUCCESS),
@@ -121,6 +128,10 @@ impl PamHooks for Pamauthramp {
             "account",
             |_pamh, _settings, _tally| { Ok(PamResultCode::PAM_SUCCESS) }
         ))
+    }
+
+    fn sm_setcred(_pamh: &mut PamHandle, _args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
+        PamResultCode::PAM_SUCCESS
     }
 }
 

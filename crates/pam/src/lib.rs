@@ -204,4 +204,9 @@ pub trait PamHooks {
     fn sm_authenticate(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
         PamResultCode::PAM_IGNORE
     }
+
+    /// Is not actually implemented, but still needs to be exposed to fix some instabilitry issues.
+    fn sm_setcred(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+        PamResultCode::PAM_IGNORE
+    }
 }

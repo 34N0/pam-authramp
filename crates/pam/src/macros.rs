@@ -57,6 +57,17 @@ macro_rules! pam_hooks {
                 let args = extract_argv(argc, argv);
                 super::$ident::sm_authenticate(pamh, args, flags)
             }
+
+            #[no_mangle]
+            pub extern "C" fn pam_sm_setcred(
+                pamh: &mut PamHandle,
+                flags: PamFlag,
+                argc: c_int,
+                argv: *const *const c_char,
+            ) -> PamResultCode {
+                let args = extract_argv(argc, argv);
+                super::$ident::sm_setcred(pamh, args, flags)
+            }
         }
     };
 }
