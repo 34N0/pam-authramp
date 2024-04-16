@@ -45,7 +45,7 @@ use crate::{ArCliError, ArCliInfo, ArCliResult as Acr, ArCliSuccess};
 /// - If the tally file does not exist, returns `ArCliResult::Info` with an `ArCliInfo` containing an informational message.
 /// - If an error occurs during the file deletion, returns `ArCliResult::Error` with an `ArCliError` containing the error message.
 pub fn user(user: &str) -> Acr {
-    let config = Config::load_file(None);
+    let config = Config::load_file(None, None);
 
     let tally_path = config.tally_dir.join(user);
 

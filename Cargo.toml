@@ -15,7 +15,7 @@ repository = "https://github.com/34N0/pam-authramp/"
 chrono = "0.4.31"
 clap = { version = "4.4.16", features = ["derive"] }
 colored = "2.1.0"
-libc = "0.2.97"
+libc = "0.2.153"
 tempdir = "0.3.7"
 tempfile = "3.8.1"
 toml = "0.8.8"

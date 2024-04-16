@@ -58,6 +58,7 @@ use pam::{PamFlag, PamResultCode, PAM_TEXT_INFO};
 use pam::{PamHandle, PamHooks};
 use std::cmp::min;
 use std::ffi::CStr;
+use std::thread::sleep;
 use uzers::get_user_by_name;
 
 use tally::Tally;
@@ -79,20 +80,19 @@ impl PamHooks for Pamauthramp {
     /// It then locks the account and increments the delay.
     ///
     /// # Arguments
-    /// - `pamh`: `PamHandle` instance for interacting with PAM
+    /// - `pam_h`: `PamHandle` instance for interacting with PAM
     /// - `args`: PAM arguments provided during authentication
     /// - `flags`: PAM flags indicating the context of the PAM operation
     ///
     /// # Returns
     /// `PAM_SUCCESS` OR `PAM_AUTH_ERR`
-    fn sm_authenticate(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        init_authramp(pamh, &args, flags, "auth", |pamh, settings, tally| {
+    fn sm_authenticate(pam_h: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+        init_authramp(pam_h, &args, flags, "auth", |pam_h, settings, tally| {
             // match action parameter
             match settings.get_action()? {
-                Actions::PREAUTH => Ok(bounce_auth(pamh, settings, tally)),
-                // bounce if called with authfail
-                Actions::AUTHFAIL => Err(bounce_auth(pamh, settings, tally)),
-                Actions::AUTHSUCC => Err(PamResultCode::PAM_AUTH_ERR),
+                Actions::PREAUTH => Ok(bounce_auth(pam_h, settings, tally)),
+                Actions::AUTHFAIL => Err(bounce_auth(pam_h, settings, tally)),
+                Actions::AUTHSUCC => Ok(PamResultCode::PAM_SUCCESS),
             }
         })
         .unwrap_or_else(|e| e)
@@ -106,20 +106,24 @@ impl PamHooks for Pamauthramp {
     /// account     required                                     `libpam_authramp.so`
     ///
     /// # Arguments
-    /// - `pamh`: `PamHandle` instance for interacting with PAM
+    /// - `pam_h`: `PamHandle` instance for interacting with PAM
     /// - `args`: PAM arguments provided during account management
     /// - `flags`: PAM flags indicating the context of the PAM operation
     ///
     /// # Returns
     /// `PAM_SUCESS` OR `PAM_SYS_ERR`
-    fn acct_mgmt(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+    fn acct_mgmt(pam_h: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
         pam_try!(init_authramp(
-            pamh,
+            pam_h,
             &args,
             flags,
             "account",
-            |_pamh, _settings, _tally| { Ok(PamResultCode::PAM_SUCCESS) }
+            |_pam_h, _settings, _tally| { Ok(PamResultCode::PAM_SUCCESS) }
         ))
+    }
+
+    fn sm_setcred(_pam_h: &mut PamHandle, _args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
+        PamResultCode::PAM_SUCCESS
     }
 }
 
@@ -127,7 +131,7 @@ impl PamHooks for Pamauthramp {
 /// Calls the provided `pam_hook` function with the initialized variables.
 ///
 /// # Arguments
-/// - `pamh`: `PamHandle` instance for interacting with PAM
+/// - `pam_h`: `PamHandle` instance for interacting with PAM
 /// - `_args`: PAM arguments provided during authentication
 /// - `_flags`: PAM flags indicating the context of the PAM operation
 /// - `pam_hook`: Function to be called with the initialized variables
@@ -135,7 +139,7 @@ impl PamHooks for Pamauthramp {
 /// # Returns
 /// Result from the `pam_hook` function or PAM error code if initialization fails
 fn init_authramp<F, R>(
-    pamh: &mut PamHandle,
+    pam_h: &mut PamHandle,
     args: &[&CStr],
     flags: PamFlag,
     pam_hook_desc: &str,
@@ -146,19 +150,19 @@ where
 {
     // Try to get PAM user
     let user = get_user_by_name(pam_try!(
-        &pamh.get_user(None),
+        &pam_h.get_user(None),
         Err(PamResultCode::PAM_AUTH_ERR)
     ));
 
     // Read configuration file
-    let settings = Settings::build(user.clone(), args, flags, pam_hook_desc)?;
+    let settings = Settings::build(user.clone(), args, flags, pam_hook_desc, Some(pam_h))?;
 
-    // common::util::syslog::init_pam_log(pamh, &settings)?;
+    // common::util::syslog::init_pam_log(pam_h, &settings)?;
 
     // Get and Set tally
-    let tally = Tally::new_from_tally_file(&Some(pamh), &settings)?;
+    let tally = Tally::new_from_tally_file(&Some(pam_h), &settings)?;
 
-    pam_hook(pamh, &settings, &tally)
+    pam_hook(pam_h, &settings, &tally)
 }
 
 /// Formats a Duration into a human-readable string representation.
@@ -171,7 +175,7 @@ where
 /// Formatted string indicating the remaining time
 fn format_remaining_time(remaining_time: Duration) -> String {
     fn append_unit(value: i64, unit: &str, formatted_time: &mut String) {
-        if value > 0 {
+        if !unit.eq("minutes") && value > 0 {
             let unit_str = if value == 1 {
                 unit.trim_end_matches('s')
             } else {
@@ -183,7 +187,7 @@ fn format_remaining_time(remaining_time: Duration) -> String {
 
     let mut formatted_time = String::new();
 
-    append_unit(remaining_time.num_hours(), "hour", &mut formatted_time);
+    append_unit(remaining_time.num_hours(), "hours", &mut formatted_time);
     append_unit(
         remaining_time.num_minutes() % 60,
         "minutes",
@@ -202,13 +206,13 @@ fn format_remaining_time(remaining_time: Duration) -> String {
 /// If the account is locked, it sends periodic messages to the user until the account is unlocked.
 ///
 /// # Arguments
-/// - `pamh`: `PamHandle` instance for interacting with PAM
+/// - `pam_h`: `PamHandle` instance for interacting with PAM
 /// - `settings`: Settings for the authramp module
 /// - `tally`: Tally information containing failure count and timestamps
 ///
 /// # Returns
 /// `PAM_SUCCESS` if the account is successfully unlocked, `PAM_AUTH_ERR` otherwise
-fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamResultCode {
+fn bounce_auth(pam_h: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamResultCode {
     // get user
     let user = match settings.get_user() {
         Ok(user) => user,
@@ -221,7 +225,7 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
     }
 
     if tally.failures_count > settings.config.free_tries {
-        if let Ok(Some(conv)) = pamh.get_item::<Conv>() {
+        if let Ok(Some(conv)) = pam_h.get_item::<Conv>() {
             let delay = tally.get_delay(settings);
 
             // Calculate the time when the account will be unlocked
@@ -229,7 +233,7 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
                 .unlock_instant
                 .unwrap_or(tally.failure_instant + delay);
 
-            match pamh.log(
+            match pam_h.log(
                 pam::LogLevel::Info,
                 format!(
                     "PAM_AUTH_ERR: Account {user:?} is getting bounced. Account still locked until {unlock_instant}"
@@ -239,8 +243,7 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
                 Err(result_code) => return result_code,
             }
 
-            // disable loop for now (#48, #50)
-            if Utc::now() < unlock_instant {
+            while Utc::now() < unlock_instant {
                 // Calculate remaining time until unlock
                 let remaining_time = unlock_instant - Utc::now();
 
@@ -256,11 +259,11 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
                     ),
                 );
 
-                // Log Conversation Error but continue loop
+                // Log conversation error but continue loop
                 match conv_res {
                     Ok(_) => (),
                     Err(pam_code) => {
-                        match pamh.log(
+                        match pam_h.log(
                             pam::LogLevel::Error,
                             format!("{pam_code:?}: Error starting PAM conversation."),
                         ) {
@@ -270,12 +273,22 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
                     }
                 }
 
+                // Don't loop if configured
+                if !settings.config.countdown {
+                    return PamResultCode::PAM_AUTH_ERR;
+                }
+
                 // Wait for one second
-                // sleep(std::time::Duration::from_secs(1));
-                return PamResultCode::PAM_AUTH_ERR;
+                sleep(std::time::Duration::from_secs(1));
             }
         } else {
-            println!("Init Conversation failed");
+            match pam_h.log(
+                pam::LogLevel::Error,
+                "Error accessing conversation in PAM library.".to_string(),
+            ) {
+                Ok(()) => (),
+                Err(result_code) => return result_code,
+            }
         }
     }
     PamResultCode::PAM_SUCCESS

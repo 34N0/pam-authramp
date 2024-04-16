@@ -27,7 +27,7 @@
 
 use crate::actions::Actions;
 use crate::config::Config;
-use pam::{PamFlag, PamResultCode};
+use pam::{PamFlag, PamHandle, PamResultCode};
 use std::collections::HashMap;
 use std::ffi::CStr;
 
@@ -53,7 +53,7 @@ impl Default for Settings<'_> {
             action: Some(Actions::AUTHSUCC),
             user: None,
             pam_hook: "auth",
-            config: Config::load_file(None),
+            config: Config::load_file(None, None),
         }
     }
 }
@@ -84,9 +84,13 @@ impl Settings<'_> {
         args: &[&CStr],
         _flags: PamFlag,
         pam_hook: &'a str,
+        pam_h: Option<&mut PamHandle>,
     ) -> Result<Settings<'a>, PamResultCode> {
-        // Load TOML file.
-        let mut settings = Settings::default();
+        // Init default settings.
+        let mut settings = Settings {
+            config: Config::load_file(None, pam_h),
+            ..Settings::default()
+        };
 
         // create possible action collection
         let action_map: HashMap<&str, Actions> = [
@@ -142,9 +146,7 @@ impl Settings<'_> {
     ///
     /// Returns a `PamResultCode` error.
     pub fn get_user(&self) -> Result<&User, PamResultCode> {
-        self.user
-            .as_ref()
-            .ok_or_else(|| PamResultCode::PAM_USER_UNKNOWN)
+        self.user.as_ref().ok_or(PamResultCode::PAM_USER_UNKNOWN)
     }
 }
 
@@ -152,8 +154,6 @@ impl Settings<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::ffi::CStr;
-    use uzers::User;
 
     #[test]
     fn test_default_settings() {
@@ -171,6 +171,7 @@ mod tests {
             &args,
             flags,
             "test",
+            None,
         );
         assert!(result.is_ok());
     }
@@ -179,7 +180,7 @@ mod tests {
     fn test_build_settings_missing_user() {
         let args = [CStr::from_bytes_with_nul("preauth\0".as_bytes()).unwrap()].to_vec();
         let flags: PamFlag = 0;
-        let result = Settings::build(None, &args, flags, "test");
+        let result = Settings::build(None, &args, flags, "test", None);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), PamResultCode::PAM_USER_UNKNOWN);
     }

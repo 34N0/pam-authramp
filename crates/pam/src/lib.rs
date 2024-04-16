@@ -16,9 +16,9 @@
 //! provide hooks for various PAM operations, such as account management and authentication.
 //!
 //!  ## License
-//! 
+//!
 //! Copyright 2023 34n0
-//! 
+//!
 //! Use of this source code is governed by an MIT-style
 //! license that can be found in the LICENSE file or at
 //! https://opensource.org/licenses/MIT.
@@ -202,6 +202,11 @@ pub trait PamHooks {
 
     /// This function performs the task of authenticating the user.
     fn sm_authenticate(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+        PamResultCode::PAM_IGNORE
+    }
+
+    /// Is not actually implemented, but still needs to be exposed to fix some instabilitry issues.
+    fn sm_setcred(pamh: &mut PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
         PamResultCode::PAM_IGNORE
     }
 }

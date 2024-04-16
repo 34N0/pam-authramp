@@ -13,9 +13,9 @@
 //! code. This allows for more concise error handling code.
 //!
 //! ## License
-//! 
+//!
 //! Copyright 2023 34n0
-//! 
+//!
 //! Use of this source code is governed by an MIT-style
 //! license that can be found in the LICENSE file or at
 //! https://opensource.org/licenses/MIT.
@@ -56,6 +56,17 @@ macro_rules! pam_hooks {
             ) -> PamResultCode {
                 let args = extract_argv(argc, argv);
                 super::$ident::sm_authenticate(pamh, args, flags)
+            }
+
+            #[no_mangle]
+            pub extern "C" fn pam_sm_setcred(
+                pamh: &mut PamHandle,
+                flags: PamFlag,
+                argc: c_int,
+                argv: *const *const c_char,
+            ) -> PamResultCode {
+                let args = extract_argv(argc, argv);
+                super::$ident::sm_setcred(pamh, args, flags)
             }
         }
     };
