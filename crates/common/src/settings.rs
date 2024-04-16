@@ -84,15 +84,13 @@ impl Settings<'_> {
         args: &[&CStr],
         _flags: PamFlag,
         pam_hook: &'a str,
-        pamh: Option<&mut PamHandle>,
+        pam_h: Option<&mut PamHandle>,
     ) -> Result<Settings<'a>, PamResultCode> {
         // Init default settings.
-        let mut settings = Settings::default();
-
-        // Load configuration file
-        if let Some(pamh) = pamh {
-            settings.config = Config::load_file(None, Some(pamh));
-        }
+        let mut settings = Settings {
+            config: Config::load_file(None, pam_h),
+            ..Settings::default()
+        };
 
         // create possible action collection
         let action_map: HashMap<&str, Actions> = [
