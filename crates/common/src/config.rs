@@ -33,6 +33,8 @@
 
 use std::{fs, path::PathBuf};
 
+use pam::PamHandle;
+
 const DEFAULT_CONFIG_FILE_PATH: &str = "/etc/security/authramp.conf";
 
 #[derive(Debug)]
@@ -78,7 +80,7 @@ impl Config {
     /// A `Config` instance populated with values from the configuration file, or the
     /// default values if the file is not present or cannot be loaded.
     #[must_use]
-    pub fn load_file(path: Option<&str>) -> Config {
+    pub fn load_file(path: Option<&str>, pamh: Option<&mut PamHandle>) -> Config {
         // Read TOML file using the toml crate
         let content =
             fs::read_to_string(PathBuf::from(path.unwrap_or(DEFAULT_CONFIG_FILE_PATH))).ok();
@@ -91,36 +93,42 @@ impl Config {
         let config = toml_table.and_then(|t| t.get("Configuration").cloned());
 
         // Map the config to the Config struct
-        config.map_or_else(Config::default, |s| Config {
-            tally_dir: s
-                .get("tally_dir")
-                .and_then(|val| val.as_str().map(PathBuf::from))
-                .unwrap_or_else(|| Config::default().tally_dir),
+        config.map_or_else(Config::default, |s| {
+            let config = Config {
+                tally_dir: s
+                    .get("tally_dir")
+                    .and_then(|val| val.as_str().map(PathBuf::from))
+                    .unwrap_or_else(|| Config::default().tally_dir),
 
-            free_tries: s
-                .get("free_tries")
-                .and_then(toml::Value::as_integer)
-                .map_or_else(|| Config::default().free_tries, |val| val as i32),
+                free_tries: s
+                    .get("free_tries")
+                    .and_then(toml::Value::as_integer)
+                    .map_or_else(|| Config::default().free_tries, |val| val as i32),
 
-            base_delay_seconds: s
-                .get("base_delay_seconds")
-                .and_then(toml::Value::as_integer)
-                .map_or_else(|| Config::default().base_delay_seconds, |val| val as i32),
+                base_delay_seconds: s
+                    .get("base_delay_seconds")
+                    .and_then(toml::Value::as_integer)
+                    .map_or_else(|| Config::default().base_delay_seconds, |val| val as i32),
 
-            ramp_multiplier: s
-                .get("ramp_multiplier")
-                .and_then(toml::Value::as_float)
-                .map_or_else(|| Config::default().ramp_multiplier, |val| val as i32),
+                ramp_multiplier: s
+                    .get("ramp_multiplier")
+                    .and_then(toml::Value::as_float)
+                    .map_or_else(|| Config::default().ramp_multiplier, |val| val as i32),
 
-            even_deny_root: s
-                .get("even_deny_root")
-                .and_then(toml::Value::as_bool)
-                .unwrap_or_else(|| Config::default().even_deny_root),
+                even_deny_root: s
+                    .get("even_deny_root")
+                    .and_then(toml::Value::as_bool)
+                    .unwrap_or_else(|| Config::default().even_deny_root),
 
-            countdown: s
-                .get("countdown")
-                .and_then(toml::Value::as_bool)
-                .unwrap_or_else(|| Config::default().countdown),
+                countdown: s
+                    .get("countdown")
+                    .and_then(toml::Value::as_bool)
+                    .unwrap_or_else(|| Config::default().countdown),
+            };
+            if let Some(pamh) = pamh {
+                let _ = pamh.log(pam::LogLevel::Info, format!("Loaded config: {config:?}"));
+            }
+            config
         })
     }
 }
@@ -160,7 +168,7 @@ mod tests {
         std::fs::write(&conf_file_path, toml_content).unwrap();
 
         // Build settings from TOML
-        let config = Config::load_file(Some(conf_file_path.to_str().unwrap()));
+        let config = Config::load_file(Some(conf_file_path.to_str().unwrap()), None);
 
         // Validate the result
         assert_eq!(config.free_tries, 10);

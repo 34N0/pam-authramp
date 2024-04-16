@@ -90,11 +90,7 @@ impl PamHooks for Pamauthramp {
         init_authramp(pamh, &args, flags, "auth", |pamh, settings, tally| {
             // match action parameter
             match settings.get_action()? {
-                Actions::PREAUTH => {
-                    let res = bounce_auth(pamh, settings, tally);
-                    Ok(res)
-                }
-                // bounce if called with authfail
+                Actions::PREAUTH => Ok(bounce_auth(pamh, settings, tally)),
                 Actions::AUTHFAIL => Err(bounce_auth(pamh, settings, tally)),
                 Actions::AUTHSUCC => Ok(PamResultCode::PAM_SUCCESS),
             }
@@ -159,7 +155,7 @@ where
     ));
 
     // Read configuration file
-    let settings = Settings::build(user.clone(), args, flags, pam_hook_desc)?;
+    let settings = Settings::build(user.clone(), args, flags, pam_hook_desc, Some(pamh))?;
 
     // common::util::syslog::init_pam_log(pamh, &settings)?;
 
@@ -179,19 +175,19 @@ where
 /// Formatted string indicating the remaining time
 fn format_remaining_time(remaining_time: Duration) -> String {
     fn append_unit(value: i64, unit: &str, formatted_time: &mut String) {
-        if value > 0 {
+        if !unit.eq("minutes") && value > 0 {
             let unit_str = if value == 1 {
                 unit.trim_end_matches('s')
             } else {
                 unit
             };
-            formatted_time.push_str(&format!("{value} {unit_str} "));
+            formatted_time.push_str(&format!("{value} {unit_str}"));
         }
     }
 
     let mut formatted_time = String::new();
 
-    append_unit(remaining_time.num_hours(), "hour", &mut formatted_time);
+    append_unit(remaining_time.num_hours(), "hours", &mut formatted_time);
     append_unit(
         remaining_time.num_minutes() % 60,
         "minutes",
@@ -247,7 +243,6 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
                 Err(result_code) => return result_code,
             }
 
-            // disable loop for now (#48, #50)
             while Utc::now() < unlock_instant {
                 // Calculate remaining time until unlock
                 let remaining_time = unlock_instant - Utc::now();
@@ -264,7 +259,7 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
                     ),
                 );
 
-                // Log Conversation Error but continue loop
+                // Log conversation error but continue loop
                 match conv_res {
                     Ok(_) => (),
                     Err(pam_code) => {
@@ -287,7 +282,13 @@ fn bounce_auth(pamh: &mut PamHandle, settings: &Settings, tally: &Tally) -> PamR
                 sleep(std::time::Duration::from_secs(1));
             }
         } else {
-            println!("Init Conversation failed");
+            match pamh.log(
+                pam::LogLevel::Error,
+                "Error accessing conversation in PAM library.".to_string(),
+            ) {
+                Ok(()) => (),
+                Err(result_code) => return result_code,
+            }
         }
     }
     PamResultCode::PAM_SUCCESS
