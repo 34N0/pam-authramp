@@ -137,69 +137,67 @@ impl Tally {
         tally_file: &Path,
         settings: &Settings,
     ) -> Result<(), PamResultCode> {
-        toml::from_str::<toml::Value>(&std::fs::read_to_string(tally_file).map_err(|e| {
-            if let Some(pam_h) = &pam_h {
-                match pam_h.log(
-                    pam::LogLevel::Error,
-                    format!("{e:?}: Error reading tally file:"),
-                ) {
-                    Ok(()) => (),
-                    Err(result_code) => return result_code,
-                }
-            }
-
-            PamResultCode::PAM_SYSTEM_ERR
-        })?)
-        .map_err(|e| {
-            if let Some(pam_h) = &pam_h {
-                match pam_h.log(
-                    pam::LogLevel::Error,
-                    format!("{e:?}: Error parsing tally file: {e}"),
-                ) {
-                    Ok(()) => (),
-                    Err(result_code) => return result_code,
-                }
-            }
-
-            PamResultCode::PAM_SYSTEM_ERR
-        })
-        .and_then(|value| {
-            // Extract values from the "Fails" table
-            if let Some(fails_table) = value.get("Fails").and_then(|v| v.as_table()) {
-                tally.failures_count = fails_table
-                    .get("count")
-                    .and_then(toml::Value::as_integer)
-                    .map(|count| count as i32)
-                    .unwrap_or_default();
-
-                tally.failure_instant = fails_table
-                    .get("instant")
-                    .and_then(|instant| instant.as_str())
-                    .and_then(|instant| instant.parse().ok())
-                    .unwrap_or_default();
-
-                tally.unlock_instant = fails_table
-                    .get("unlock_instant")
-                    .and_then(|unlock_instant| unlock_instant.as_str())
-                    .and_then(|unlock_instant| unlock_instant.parse().ok());
-            } else {
-                // If the "Fails" table doesn't exist, return an error
-
+        // load tally file into table
+        let toml_tally =
+            toml::from_str::<toml::Value>(&std::fs::read_to_string(tally_file).map_err(|e| {
                 if let Some(pam_h) = &pam_h {
                     match pam_h.log(
                         pam::LogLevel::Error,
-                        "Error reading tally file: [Fails] table does not exist".to_string(),
+                        format!("{e:?}: Error reading tally file:"),
                     ) {
                         Ok(()) => (),
-                        Err(result_code) => return Err(result_code),
+                        Err(result_code) => return result_code,
                     }
                 }
+                PamResultCode::PAM_SYSTEM_ERR
+            })?)
+            .map_err(|e| {
+                if let Some(pam_h) = &pam_h {
+                    match pam_h.log(
+                        pam::LogLevel::Error,
+                        format!("{e:?}: Error parsing tally file: {e}"),
+                    ) {
+                        Ok(()) => (),
+                        Err(result_code) => return result_code,
+                    }
+                }
+                PamResultCode::PAM_SYSTEM_ERR
+            })?;
 
-                return Err(PamResultCode::PAM_SYSTEM_ERR);
+        // Extract values from the "Fails" table
+        if let Some(fails_table) = toml_tally.get("Fails").and_then(|v| v.as_table()) {
+            tally.failures_count = fails_table
+                .get("count")
+                .and_then(toml::Value::as_integer)
+                .map(|count| count as i32)
+                .unwrap_or_default();
+
+            tally.failure_instant = fails_table
+                .get("instant")
+                .and_then(|instant| instant.as_str())
+                .and_then(|instant| instant.parse().ok())
+                .unwrap_or_default();
+
+            tally.unlock_instant = fails_table
+                .get("unlock_instant")
+                .and_then(|unlock_instant| unlock_instant.as_str())
+                .and_then(|unlock_instant| unlock_instant.parse().ok());
+        } else {
+            // If the "Fails" table doesn't exist, return an error
+            if let Some(pam_h) = &pam_h {
+                match pam_h.log(
+                    pam::LogLevel::Error,
+                    "Error reading tally file: [Fails] table does not exist".to_string(),
+                ) {
+                    Ok(()) => (),
+                    Err(result_code) => return Err(result_code),
+                }
             }
 
-            Self::update_tally_from_section(pam_h, tally, user, tally_file, settings)
-        })
+            return Err(PamResultCode::PAM_SYSTEM_ERR);
+        }
+
+        Self::update_tally_from_section(pam_h, tally, user, tally_file, settings)
     }
 
     /// Updates tally information based on a section from the tally file.

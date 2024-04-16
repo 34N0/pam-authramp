@@ -96,7 +96,7 @@ impl Config {
 
         // Extract the "Config" section from the TOML table
         let toml_config = toml_table.and_then(|t| t.get("Configuration").cloned());
-        
+
         match toml_config {
             Some(toml_config) => Self::map_config(&toml_config, pam_h),
             None => Config::default(),
@@ -150,7 +150,10 @@ impl Config {
         };
         // when there is no pam_h, there don't need to be logs
         if let Some(pam_h) = pam_h {
-            let _ = pam_h.log(pam::LogLevel::Info, format!("Successfully loaded config: {config:?}"));
+            let _ = pam_h.log(
+                pam::LogLevel::Info,
+                format!("Successfully loaded config: {config:?}"),
+            );
         }
         config
     }
