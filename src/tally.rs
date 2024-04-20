@@ -458,7 +458,7 @@ mod tests {
         // Test: Open nonexistent tally file
         let result = Tally::new_from_tally_file(&None, &settings);
 
-        println!("{result:?}");
+        // println!("{result:?}");
 
         // Check if the Tally struct is created with default values
         assert!(result.is_ok());
