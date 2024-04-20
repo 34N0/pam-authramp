@@ -174,30 +174,36 @@ where
 /// # Returns
 /// Formatted string indicating the remaining time
 fn format_remaining_time(remaining_time: Duration) -> String {
-    fn append_unit(value: i64, unit: &str, formatted_time: &mut String) {
-        if !unit.eq("minutes") && value > 0 {
-            let unit_str = if value == 1 {
-                unit.trim_end_matches('s')
-            } else {
-                unit
-            };
-            formatted_time.push_str(&format!("{value} {unit_str}"));
-        }
+    if remaining_time.num_seconds() == 0 {
+        return "..".to_string();
     }
 
     let mut formatted_time = String::new();
 
-    append_unit(remaining_time.num_hours(), "hours", &mut formatted_time);
-    append_unit(
-        remaining_time.num_minutes() % 60,
-        "minutes",
-        &mut formatted_time,
-    );
-    append_unit(
-        remaining_time.num_seconds() % 60,
-        "seconds",
-        &mut formatted_time,
-    );
+    let mut t_val = remaining_time.num_hours();
+    let mut t_desc = "hours";
+
+    if t_val > 0 {
+        if t_val == 1 {
+            t_desc = t_desc.trim_end_matches('s');
+        }
+        formatted_time += &format!("{t_val} {t_desc}, ");
+    }
+
+    t_val = remaining_time.num_minutes() % 60;
+    t_desc = "minutes";
+
+    if t_val > 0 {
+        if t_val == 1 {
+            t_desc = t_desc.trim_end_matches('s');
+        }
+        formatted_time += &format!("{t_val} {t_desc} and ");
+    }
+
+    t_val = remaining_time.num_seconds() % 60;
+    t_desc = "seconds";
+
+    formatted_time += &format!("{t_val} {t_desc}");
 
     formatted_time
 }
@@ -292,4 +298,41 @@ fn bounce_auth(pam_h: &mut PamHandle, settings: &Settings, tally: &Tally) -> Pam
         }
     }
     PamResultCode::PAM_SUCCESS
+}
+
+// Unit tests
+#[cfg(test)]
+mod tests {
+    use chrono::TimeDelta;
+
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn test_format_remaining_time() {
+        let cast_error = &"bad time delta!";
+
+        // Test with duration of 2 hours, 24 minutes, and 5 seconds
+        let duration =
+            TimeDelta::from_std(Duration::new(2 * 3600 + 24 * 60 + 5, 0)).expect(cast_error);
+        assert_eq!(
+            format_remaining_time(duration),
+            "2 hours, 24 minutes and 5 seconds"
+        );
+
+        // Test with duration of 1 hour, 1 minute, and 0 seconds
+        let duration = TimeDelta::from_std(Duration::new(3600 + 60, 0)).expect(cast_error);
+        assert_eq!(
+            format_remaining_time(duration),
+            "1 hour, 1 minute and 0 seconds"
+        );
+
+        // Test with duration of 35 seconds
+        let duration = TimeDelta::from_std(Duration::new(35, 0)).expect(cast_error);
+        assert_eq!(format_remaining_time(duration), "35 seconds");
+
+        // Test with duration of 0 seconds
+        let duration = TimeDelta::from_std(Duration::new(0, 0)).expect(cast_error);
+        assert_eq!(format_remaining_time(duration), "..");
+    }
 }
