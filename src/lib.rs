@@ -203,6 +203,10 @@ fn format_remaining_time(remaining_time: Duration) -> String {
     t_val = remaining_time.num_seconds() % 60;
     t_desc = "seconds";
 
+    if t_val == 1 {
+        t_desc = t_desc.trim_end_matches('s');
+    }
+
     formatted_time += &format!("{t_val} {t_desc}");
 
     formatted_time
@@ -330,6 +334,10 @@ mod tests {
         // Test with duration of 35 seconds
         let duration = TimeDelta::from_std(Duration::new(35, 0)).expect(cast_error);
         assert_eq!(format_remaining_time(duration), "35 seconds");
+
+        // Test with duration of 35 seconds
+        let duration = TimeDelta::from_std(Duration::new(1, 0)).expect(cast_error);
+        assert_eq!(format_remaining_time(duration), "1 second");
 
         // Test with duration of 0 seconds
         let duration = TimeDelta::from_std(Duration::new(0, 0)).expect(cast_error);
