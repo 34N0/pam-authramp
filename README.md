@@ -11,8 +11,7 @@ The AuthRamp PAM (Pluggable Authentication Modules) module provides an account l
 ### RPM
 If you're a RPM distribution user, then then pam-authramp can be installed using a binary .rpm file provided in each [release](https://github.com/34N0/pam-authramp/releases).
 ```bash
-curl -LO https://github.com/34N0/pam-authramp/releases/download/v0.9.1-beta/pam-authramp-0.9.1-1.x86_64.rpm
-sudo rpm -i pam-authramp-0.9.1-1.x86_64.rpm
+sudo rpm -i pam-authramp-<VERSION>.x86_64.rpm
 ```
 ### COPR
 The module is released in a COPR repository:
@@ -20,12 +19,20 @@ The module is released in a COPR repository:
 sudo dnf copr enable 34n0s/pam-authramp
 sudo dnf install pam-authramp
 ```
+
+### rpm-ostree
+Use a 3rd party tool like [rpm-copr](https://github.com/34N0/rpm-copr) to add the copr repository
+```bash
+rpm-copr enable 34n0s/pam-authramp
+rpm-ostree install pam-authramp
+```
+
 ### Debian
 If you're a Debian user (or a user of a Debian derivative like Ubuntu), then pam-authramp can be installed using a binary .deb file provided in each [release](https://github.com/34N0/pam-authramp/releases).
 ```bash
-curl -LO https://github.com/34N0/pam-authramp/releases/download/v0.9.1-beta/pam-authramp_0.9.1-1_amd64.deb
-sudo dpkg -i pam-authramp_0.9.1-1_amd64.deb
+sudo dpkg -i pam-authramp_<VERSION>_amd64.deb
 ```
+
 ### Manually
 1. Download the latest [release](https://github.com/34N0/pam-authramp/releases).
 2. Copy the `libpam_authramp.so` library to the default PAM library directory. The directory varies for different distributions. For example, in current Fedora versions, the path is `/lib64/security`.
