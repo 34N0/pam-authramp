@@ -14,7 +14,8 @@ If you're a RPM distribution user, then then pam-authramp can be installed using
 sudo rpm -i pam-authramp-<VERSION>.x86_64.rpm
 ```
 ### COPR
-The module is released in a COPR repository:
+[![Copr build status](https://copr.fedorainfracloud.org/coprs/34n0s/pam-authramp/package/pam-authramp/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/34n0s/pam-authramp/package/pam-authramp/)
+
 ```bash
 sudo dnf copr enable 34n0s/pam-authramp
 sudo dnf install pam-authramp
