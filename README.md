@@ -30,7 +30,7 @@ rpm-ostree install pam-authramp
 ### Debian
 If you're a Debian user (or a user of a Debian derivative like Ubuntu), then pam-authramp can be installed using a binary .deb file provided in each [release](https://github.com/34N0/pam-authramp/releases).
 ```bash
-sudo dpkg -i pam-authramp_<VERSION>_amd64.deb
+sudo dpkg -i pam-authramp_<VERSION>.x86_64.deb
 ```
 
 ### Manually
