@@ -66,7 +66,7 @@ Create a configuration file under /etc/security/authramp.conf. This is an exampl
 [Configuration]
 # Directory where tally information is stored.
 # Each user has a separate file in this directory to track authentication failures.
-# tally_dir = /var/run/authramp
+# tally_dir = "/var/run/authramp"
 #
 # Number of allowed free authentication attempts before applying delays.
 # During these free tries, the module allows authentication without introducing delays.
@@ -89,6 +89,9 @@ Create a configuration file under /etc/security/authramp.conf. This is an exampl
 # Whether the PAM user messages in the login screen should update automatically or not.
 # countdown = true
 ```
+#### perstistent lockout
+By default the lockout is not persistet between system reboots. This makes sense for systems configured with a LUKS full disk encryption. If you're system is encrypted in a different way, like systemd-homed change the `tally_dir = "/var/run/authramp"` setting to a persisted folder. The suggested folder is `/var/lib/authramp`.
+
 ### default delay
 The default configuration of this module is very restrictive. The standard delays are:
 
