@@ -332,18 +332,48 @@ impl Tally {
         tally_file: &Path,
         _settings: &Settings,
     ) -> Result<(), PamResultCode> {
-        fs::create_dir_all(tally_file.parent().unwrap()).map_err(|e| {
-            if let Some(pam_h) = &pam_h {
-                match pam_h.log(
+        // Get the Parent directory
+        let Some(parent_dir) = tally_file.parent() else {
+            if let Some(pam_h) = pam_h {
+                let log_result = pam_h.log(
                     pam::LogLevel::Error,
-                    format!("{e:?}: Error creating tally file:"),
-                ) {
-                    Ok(()) => (),
-                    Err(result_code) => return result_code,
+                    "Failed to get tally directory".to_string(),
+                );
+                if log_result.is_err() {
+                    return Err(PamResultCode::PAM_SYSTEM_ERR);
                 }
             }
-            PamResultCode::PAM_PERM_DENIED
-        })?;
+            return Err(PamResultCode::PAM_SYSTEM_ERR);
+        };
+
+        // Create the parent directory with all intermediate directories
+        if let Err(e) = fs::create_dir_all(parent_dir) {
+            if let Some(pam_h) = pam_h {
+                let log_result = pam_h.log(
+                    pam::LogLevel::Error,
+                    format!("{e:?}: Error creating tally directory"),
+                );
+                if log_result.is_err() {
+                    return Err(PamResultCode::PAM_SYSTEM_ERR);
+                }
+            }
+            return Err(PamResultCode::PAM_SYSTEM_ERR);
+        }
+
+        // Set the permissions to 755
+        let permissions = fs::Permissions::from_mode(0o755);
+        if let Err(e) = fs::set_permissions(parent_dir, permissions) {
+            if let Some(pam_h) = pam_h {
+                let log_result = pam_h.log(
+                    pam::LogLevel::Error,
+                    format!("{e:?}: Error setting tally directory permissions"),
+                );
+                if log_result.is_err() {
+                    return Err(PamResultCode::PAM_SYSTEM_ERR);
+                }
+            }
+            return Err(PamResultCode::PAM_SYSTEM_ERR);
+        }
 
         // Write the TOML string to disk
         let toml_str = format!(
