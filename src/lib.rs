@@ -260,25 +260,28 @@ fn bounce_auth(pam_h: &mut PamHandle, settings: &Settings, tally: &Tally) -> Pam
                 // Cap remaining time at 24 hours
                 let capped_remaining_time = min(remaining_time, Duration::hours(24));
 
-                // Send a message to the conversation function
-                let conv_res = conv.send(
-                    PAM_TEXT_INFO,
-                    &format!(
-                        "Account locked! Unlocking in {}.",
-                        format_remaining_time(capped_remaining_time)
-                    ),
-                );
+                // Only send a message every two seconds to help with latency
+                if capped_remaining_time.num_seconds() % 2 == 0 {
+                    // Send a message to the conversation function
+                    let conv_res = conv.send(
+                        PAM_TEXT_INFO,
+                        &format!(
+                            "Account locked! Unlocking in {}.",
+                            format_remaining_time(capped_remaining_time)
+                        ),
+                    );
 
-                // Log conversation error but continue loop
-                match conv_res {
-                    Ok(_) => (),
-                    Err(pam_code) => {
-                        match pam_h.log(
-                            pam::LogLevel::Error,
-                            format!("{pam_code:?}: Error starting PAM conversation."),
-                        ) {
-                            Ok(()) => (),
-                            Err(result_code) => return result_code,
+                    // Log conversation error but continue loop
+                    match conv_res {
+                        Ok(_) => (),
+                        Err(pam_code) => {
+                            match pam_h.log(
+                                pam::LogLevel::Error,
+                                format!("{pam_code:?}: Error starting PAM conversation."),
+                            ) {
+                                Ok(()) => (),
+                                Err(result_code) => return result_code,
+                            }
                         }
                     }
                 }
