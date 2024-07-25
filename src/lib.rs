@@ -172,8 +172,8 @@ where
 /// - `remaining_time`: Duration representing the remaining time
 ///
 /// # Returns
-/// Formatted string indicating the remaining time
-fn format_remaining_time(remaining_time: Duration) -> String {
+/// Formatted string indicating the remaining time in the countdown
+fn format_remaining_countdown_time(remaining_time: Duration) -> String {
     if remaining_time.num_seconds() == 0 {
         return "..".to_string();
     }
@@ -212,6 +212,35 @@ fn format_remaining_time(remaining_time: Duration) -> String {
     formatted_time
 }
 
+fn pam_message(pam_h: &mut PamHandle, msg: &str) -> Result<(), PamResultCode> {
+    if let Ok(Some(conv)) = pam_h.get_item::<Conv>() {
+        // Send a message to the conversation function
+        let conv_res = conv.send(PAM_TEXT_INFO, msg);
+
+        // Log error
+        match conv_res {
+            Ok(_) => Ok(()),
+            Err(pam_code) => {
+                match pam_h.log(
+                    pam::LogLevel::Error,
+                    format!("{pam_code:?}: Error starting PAM conversation."),
+                ) {
+                    Ok(()) => Ok(()),
+                    Err(result_code) => Err(result_code),
+                }
+            }
+        }
+    } else {
+        match pam_h.log(
+            pam::LogLevel::Error,
+            "Error accessing conversation in PAM library.".to_string(),
+        ) {
+            Ok(()) => Ok(()),
+            Err(result_code) => Err(result_code),
+        }
+    }
+}
+
 /// Handles the account lockout mechanism based on the number of failures and settings.
 /// If the account is locked, it sends periodic messages to the user until the account is unlocked.
 ///
@@ -235,15 +264,14 @@ fn bounce_auth(pam_h: &mut PamHandle, settings: &Settings, tally: &Tally) -> Pam
     }
 
     if tally.failures_count > settings.config.free_tries {
-        if let Ok(Some(conv)) = pam_h.get_item::<Conv>() {
-            let delay = tally.get_delay(settings);
+        let delay = tally.get_delay(settings);
 
-            // Calculate the time when the account will be unlocked
-            let unlock_instant = tally
-                .unlock_instant
-                .unwrap_or(tally.failure_instant + delay);
+        // Calculate the time when the account will be unlocked
+        let unlock_instant = tally
+            .unlock_instant
+            .unwrap_or(tally.failure_instant + delay);
 
-            match pam_h.log(
+        match pam_h.log(
                 pam::LogLevel::Info,
                 format!(
                     "PAM_AUTH_ERR: Account {user:?} is getting bounced. Account still locked until {unlock_instant}"
@@ -253,55 +281,42 @@ fn bounce_auth(pam_h: &mut PamHandle, settings: &Settings, tally: &Tally) -> Pam
                 Err(result_code) => return result_code,
             }
 
-            while Utc::now() < unlock_instant {
-                // Calculate remaining time until unlock
-                let remaining_time = unlock_instant - Utc::now();
-
-                // Cap remaining time at 24 hours
-                let capped_remaining_time = min(remaining_time, Duration::hours(24));
-
-                // Only send a message every two seconds to help with latency
-                if capped_remaining_time.num_seconds() % 2 == 0 {
-                    // Send a message to the conversation function
-                    let conv_res = conv.send(
-                        PAM_TEXT_INFO,
-                        &format!(
-                            "Account locked! Unlocking in {}.",
-                            format_remaining_time(capped_remaining_time)
-                        ),
-                    );
-
-                    // Log conversation error but continue loop
-                    match conv_res {
-                        Ok(_) => (),
-                        Err(pam_code) => {
-                            match pam_h.log(
-                                pam::LogLevel::Error,
-                                format!("{pam_code:?}: Error starting PAM conversation."),
-                            ) {
-                                Ok(()) => (),
-                                Err(result_code) => return result_code,
-                            }
-                        }
-                    }
-                }
-
-                // Don't loop if configured
-                if !settings.config.countdown {
-                    return PamResultCode::PAM_AUTH_ERR;
-                }
-
-                // Wait for one second
-                sleep(std::time::Duration::from_secs(1));
-            }
-        } else {
-            match pam_h.log(
-                pam::LogLevel::Error,
-                "Error accessing conversation in PAM library.".to_string(),
+        // Don't loop and return timestamp if configured
+        if !settings.config.countdown {
+            if let Err(result_code) = pam_message(
+                pam_h,
+                &format!(
+                    "Account locked until {}.",
+                    unlock_instant.format("%Y-%m-%d %I:%M:%S %p")
+                ),
             ) {
-                Ok(()) => (),
-                Err(result_code) => return result_code,
+                return result_code;
             }
+            return PamResultCode::PAM_AUTH_ERR;
+        }
+
+        while Utc::now() < unlock_instant {
+            // Calculate remaining time until unlock
+            let remaining_time = unlock_instant - Utc::now();
+
+            // Cap remaining time at 24 hours
+            let capped_remaining_time = min(remaining_time, Duration::hours(24));
+
+            // Only send a message every two seconds to help with latency
+            if capped_remaining_time.num_seconds() % 2 == 0 {
+                if let Err(result_code) = pam_message(
+                    pam_h,
+                    &format!(
+                        "Account locked! Unlocking in {}.",
+                        format_remaining_countdown_time(capped_remaining_time)
+                    ),
+                ) {
+                    return result_code;
+                }
+            }
+
+            // Wait for one second
+            sleep(std::time::Duration::from_secs(1));
         }
     }
     PamResultCode::PAM_SUCCESS
@@ -323,27 +338,27 @@ mod tests {
         let duration =
             TimeDelta::from_std(Duration::new(2 * 3600 + 24 * 60 + 5, 0)).expect(cast_error);
         assert_eq!(
-            format_remaining_time(duration),
+            format_remaining_countdown_time(duration),
             "2 hours, 24 minutes and 5 seconds"
         );
 
         // Test with duration of 1 hour, 1 minute, and 0 seconds
         let duration = TimeDelta::from_std(Duration::new(3600 + 60, 0)).expect(cast_error);
         assert_eq!(
-            format_remaining_time(duration),
+            format_remaining_countdown_time(duration),
             "1 hour, 1 minute and 0 seconds"
         );
 
         // Test with duration of 35 seconds
         let duration = TimeDelta::from_std(Duration::new(35, 0)).expect(cast_error);
-        assert_eq!(format_remaining_time(duration), "35 seconds");
+        assert_eq!(format_remaining_countdown_time(duration), "35 seconds");
 
         // Test with duration of 35 seconds
         let duration = TimeDelta::from_std(Duration::new(1, 0)).expect(cast_error);
-        assert_eq!(format_remaining_time(duration), "1 second");
+        assert_eq!(format_remaining_countdown_time(duration), "1 second");
 
         // Test with duration of 0 seconds
         let duration = TimeDelta::from_std(Duration::new(0, 0)).expect(cast_error);
-        assert_eq!(format_remaining_time(duration), "..");
+        assert_eq!(format_remaining_countdown_time(duration), "..");
     }
 }
