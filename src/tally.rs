@@ -362,7 +362,8 @@ impl Tally {
 
         // Set the permissions to 755
         let permissions = fs::Permissions::from_mode(0o755);
-        if let Err(e) = fs::set_permissions(parent_dir, permissions) {
+
+        if let Err(e) = fs::set_permissions(parent_dir, permissions.clone()) {
             if let Some(pam_h) = pam_h {
                 let log_result = pam_h.log(
                     pam::LogLevel::Error,
@@ -396,8 +397,18 @@ impl Tally {
         })?;
 
         //  set file permissions
-        fs::set_permissions(tally_file, fs::Permissions::from_mode(0o600))
-            .map_err(|_e| PamResultCode::PAM_SYSTEM_ERR)?;
+        if let Err(e) = fs::set_permissions(tally_file, permissions) {
+            if let Some(pam_h) = pam_h {
+                let log_result = pam_h.log(
+                    pam::LogLevel::Error,
+                    format!("{e:?}: Error setting tally file permissions"),
+                );
+                if log_result.is_err() {
+                    return Err(PamResultCode::PAM_SYSTEM_ERR);
+                }
+            }
+            return Err(PamResultCode::PAM_SYSTEM_ERR);
+        }
 
         // get created tally file meta
         let tally_file_meta =
