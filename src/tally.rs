@@ -197,7 +197,7 @@ impl Tally {
             return Err(PamResultCode::PAM_SYSTEM_ERR);
         }
 
-        Self::update_tally_from_section(pam_h, tally, user, tally_file, settings)
+        Self::update_tally(pam_h, tally, user, tally_file, settings)
     }
 
     /// Updates tally information based on a section from the tally file.
@@ -213,7 +213,7 @@ impl Tally {
     ///
     /// # Returns
     /// A `Result` indicating success or a `PAM_SYSTEM_ERR` in case of errors.
-    fn update_tally_from_section(
+    fn update_tally(
         pam_h: &Option<&mut PamHandle>,
         tally: &mut Tally,
         user: &User,
