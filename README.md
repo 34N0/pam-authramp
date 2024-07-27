@@ -87,7 +87,7 @@ Create a configuration file under /etc/security/authramp.conf. This is an exampl
 # even_deny_root = false
 #
 # Whether the PAM user messages in the login screen should update automatically or not.
-# countdown = true
+# countdown = false
 ```
 #### perstistent lockout
 By default the lockout is not persistet between system reboots. This makes sense for systems configured with a LUKS full disk encryption. If you're system is encrypted in a different way, like systemd-homed change the `tally_dir = "/var/run/authramp"` setting to a persisted folder. The suggested folder is `/var/lib/authramp`.
