@@ -283,16 +283,20 @@ fn bounce_auth(pam_h: &mut PamHandle, settings: &Settings, tally: &Tally) -> Pam
 
         // Don't loop and return timestamp if configured
         if !settings.config.countdown {
-            if let Err(result_code) = pam_message(
-                pam_h,
-                &format!(
-                    "Account locked until {}.",
-                    unlock_instant.format("%Y-%m-%d %I:%M:%S %p")
-                ),
-            ) {
-                return result_code;
+            // If account is locked, keep user locked out
+            if Utc::now() < unlock_instant {
+                if let Err(result_code) = pam_message(
+                    pam_h,
+                    &format!(
+                        "Account locked until {}.",
+                        unlock_instant.format("%Y-%m-%d %I:%M:%S %p")
+                    ),
+                ) {
+                    return result_code;
+                }
+                return PamResultCode::PAM_AUTH_ERR;
             }
-            return PamResultCode::PAM_AUTH_ERR;
+            return PamResultCode::PAM_SUCCESS;
         }
 
         while Utc::now() < unlock_instant {
