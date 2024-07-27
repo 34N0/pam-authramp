@@ -212,6 +212,24 @@ fn format_remaining_countdown_time(remaining_time: Duration) -> String {
     formatted_time
 }
 
+/// Sends a message to the PAM conversation function and logs errors if they occur.
+///
+/// This function retrieves the conversation function from the PAM handle and sends
+/// a specified message to it. If any errors occur during this process, they are logged
+/// appropriately.
+///
+/// # Arguments
+/// - `pam_h`: Mutable reference to the `PamHandle`
+/// - `msg`: String slice containing the message to be sent
+///
+/// # Returns
+/// `Result<(), PamResultCode>` - Returns `Ok(())` if the message is sent successfully.
+/// Returns `Err(PamResultCode)` if an error occurs, with the appropriate PAM result code.
+///
+/// # Errors
+/// - If the conversation function cannot be accessed from the PAM handle.
+/// - If sending the message to the conversation function fails.
+/// - If logging the error fails.
 fn pam_message(pam_h: &mut PamHandle, msg: &str) -> Result<(), PamResultCode> {
     if let Ok(Some(conv)) = pam_h.get_item::<Conv>() {
         // Send a message to the conversation function
